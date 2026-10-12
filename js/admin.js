@@ -111,9 +111,11 @@
     status('Anda telah keluar. Masukkan password untuk mengakses panel.');
   }
 
-  // Paksa login setiap buka admin, kecuali deep-link edit dari frontend (sudah prompt password)
-  const _deepEdit = new URLSearchParams(location.search).get('edit');
-  if (!_deepEdit) {
+  // Paksa login setiap buka admin, kecuali deep-link dari frontend (edit / focus=ppdb + password sudah diisi)
+  const _urlParams = new URLSearchParams(location.search);
+  const _deepEdit = _urlParams.get('edit');
+  const _focusPpdb = _urlParams.get('focus') === 'ppdb' || sessionStorage.getItem('sdit_di_ppdb_focus') === '1';
+  if (!_deepEdit && !_focusPpdb) {
     try { sessionStorage.removeItem(AUTH_KEY); } catch (_) {}
   }
   lockAdmin();
@@ -124,7 +126,7 @@
   if (inpLogin) inpLogin.addEventListener('keydown', (e) => { if (e.key === 'Enter') tryLogin(); });
 
   // Auto-unlock if deep-link + already authenticated from frontend prompt
-  if (_deepEdit && isAuthed()) {
+  if ((_deepEdit || _focusPpdb) && isAuthed()) {
     unlockAdmin();
   } else {
     lockAdmin();
@@ -952,6 +954,11 @@
       ppdbRows = j.rows || [];
       renderPpdbTable();
       status('✓ Data PPDB dimuat (' + ppdbRows.length + ' pendaftar)');
+      // Tandai notifikasi sudah dibaca (lonceng hilang di website)
+      try {
+        await ppdbApi('markPpdbRead');
+        try { sessionStorage.removeItem('sdit_di_ppdb_focus'); } catch (_) {}
+      } catch (_) {}
     } catch (e) {
       if (tbody) tbody.innerHTML = '<tr><td colspan="9" class="ppdb-empty">Gagal memuat: ' + escapeHtml(e.message) + '<br><span class="hint">Pastikan Apps Script sudah di-redeploy dengan endpoint listPpdb.</span></td></tr>';
       status('✗ Gagal muat PPDB: ' + e.message);
@@ -1372,6 +1379,26 @@
 
 
   // Deep-link from frontend quick-edit: admin/?edit=carousel:0
+
+  function focusPpdbSectionIfNeeded() {
+    const params = new URLSearchParams(location.search);
+    const need = params.get('focus') === 'ppdb' || sessionStorage.getItem('sdit_di_ppdb_focus') === '1';
+    if (!need) return;
+    const card = document.getElementById('ppdbDataCard');
+    if (card) {
+      setTimeout(() => {
+        card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        card.style.boxShadow = '0 0 0 3px rgba(201,162,39,.55), 0 8px 28px rgba(8,76,55,.12)';
+        setTimeout(() => { card.style.boxShadow = ''; }, 2600);
+      }, 500);
+    }
+    try {
+      const u = new URL(location.href);
+      u.searchParams.delete('focus');
+      history.replaceState({}, '', u.pathname + u.search);
+    } catch (_) {}
+  }
+
   function handleDeepLinkEdit() {
     const params = new URLSearchParams(location.search);
     const edit = params.get('edit');
@@ -1442,5 +1469,14 @@
   }
 
   handleDeepLinkEdit();
+  if (isAuthed()) focusPpdbSectionIfNeeded();
+
+  // Re-focus after login
+  const _tryLoginOrig = tryLogin;
+  // wrap: after successful login focus ppdb
+  const _btnLogin = document.getElementById('btnLogin');
+  if (_btnLogin) {
+    _btnLogin.addEventListener('click', () => setTimeout(() => { if (isAuthed()) focusPpdbSectionIfNeeded(); }, 200));
+  }
 
 })();

@@ -863,3 +863,77 @@ body.admin-edit-armed [data-admin-edit]:hover {
   from { opacity: 0; transform: translateY(12px); }
   to { opacity: 1; transform: none; }
 }
+
+
+/* ========== Notifikasi PPDB (admin) ========== */
+.ppdb-notif-bell {
+  position: fixed;
+  right: 18px;
+  top: 72px;
+  z-index: 9000;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  background: #0B6E4F;
+  color: #fff;
+  box-shadow: 0 8px 24px rgba(8, 76, 55, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform .15s ease, background .15s ease;
+}
+.ppdb-notif-bell:hover { background: #084C37; transform: scale(1.06); }
+.ppdb-notif-bell:focus-visible { outline: 3px solid #C9A227; outline-offset: 2px; }
+.ppdb-notif-bell svg { width: 22px; height: 22px; fill: currentColor; }
+.ppdb-notif-bell .ppdb-notif-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: #dc2626;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 20px;
+  text-align: center;
+  border: 2px solid #fff;
+  box-shadow: 0 2px 8px rgba(220, 38, 38, 0.4);
+}
+.ppdb-notif-bell.is-empty { opacity: .55; }
+.ppdb-notif-bell.is-empty .ppdb-notif-badge { display: none; }
+.ppdb-notif-panel {
+  position: fixed;
+  right: 18px;
+  top: 128px;
+  z-index: 9001;
+  width: min(320px, calc(100vw - 32px));
+  background: #fff;
+  border-radius: 14px;
+  border: 1px solid rgba(11, 110, 79, 0.15);
+  box-shadow: 0 16px 48px rgba(8, 76, 55, 0.2);
+  padding: 1rem 1.1rem;
+  display: none;
+}
+.ppdb-notif-panel.open { display: block; animation: ppdbReveal .25s ease; }
+.ppdb-notif-panel h3 { margin: 0 0 .4rem; font-size: 1rem; color: #084C37; }
+.ppdb-notif-panel p { margin: 0 0 .75rem; font-size: .88rem; color: #5B6575; line-height: 1.45; }
+.ppdb-notif-panel input[type="password"] {
+  width: 100%;
+  padding: .55rem .7rem;
+  border-radius: 8px;
+  border: 1.5px solid rgba(11, 110, 79, 0.25);
+  margin-bottom: .65rem;
+  font-size: .9rem;
+}
+.ppdb-notif-panel .actions { display: flex; gap: .5rem; flex-wrap: wrap; }
+.ppdb-notif-panel .err { color: #b91c1c; font-size: .82rem; margin-bottom: .5rem; display: none; }
+.ppdb-notif-panel .err.show { display: block; }
+@media (max-width: 640px) {
+  .ppdb-notif-bell { top: auto; bottom: 88px; right: 14px; }
+  .ppdb-notif-panel { top: auto; bottom: 148px; right: 14px; }
+}

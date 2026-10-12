@@ -209,3 +209,19 @@ minat_program | tinggi_badan | berat_badan | catatan | persetujuan | source_url 
 **Redeploy** Web App (New version) agar endpoint `submitPpdb` aktif.
 
 Export → Download CSV dari sheet `ppdb` untuk diimpor ke aplikasi PPDB sekolah atau mapping ke Dapodik.
+
+
+---
+
+## Notifikasi PPDB (lonceng + email)
+
+Setelah redeploy Apps Script:
+
+1. **Lonceng di website publik** — otomatis menampilkan jumlah formulir baru (`getPpdbNotif`). Klik → password admin → panel Data PPDB. Saat admin membuka list, notifikasi di-reset (`markPpdbRead`).
+
+2. **Email opsional** — di Apps Script → Project Settings → Script properties, tambah:
+   - `PPDB_NOTIFY_EMAIL` = email admin (contoh: `darulistiqomahsdit@gmail.com`)
+   
+   Setiap submit formulir akan mengirim email ringkasan (via `MailApp`).
+
+**Catatan WhatsApp otomatis:** pengiriman WA ke admin tanpa interaksi pengguna membutuhkan WhatsApp Business API / gateway berbayar. Lonceng + email adalah alternatif yang stabil di stack ini.

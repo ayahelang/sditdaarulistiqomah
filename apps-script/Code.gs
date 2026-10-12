@@ -36,7 +36,7 @@ function handleRequest(e, method) {
     }
 
     var token = PropertiesService.getScriptProperties().getProperty('API_TOKEN') || '';
-    var publicActions = { list: 1, getSite: 1, ping: 1, publish: 1, getEngagement: 1, like: 1, comment: 1, submitPpdb: 1 };
+    var publicActions = { list: 1, getSite: 1, ping: 1, publish: 1, getEngagement: 1, like: 1, comment: 1, submitPpdb: 1, getPpdbNotif: 1 };
     if (!publicActions[action]) {
       var clientToken = (e.parameter && e.parameter.token) || body.token || '';
       if (token && clientToken !== token) {
@@ -93,6 +93,12 @@ function handleRequest(e, method) {
     }
     if (action === 'deletePpdb') {
       return json_(deletePpdb_(body.id || (e.parameter && e.parameter.id)));
+    }
+    if (action === 'getPpdbNotif') {
+      return json_(getPpdbNotif_());
+    }
+    if (action === 'markPpdbRead') {
+      return json_(markPpdbRead_());
     }
 
     return json_({ ok: false, error: 'Unknown action: ' + action });
@@ -442,6 +448,10 @@ function submitPpdb_(data) {
   });
   sheet.appendRow(row);
 
+  // Notifikasi admin (lonceng + email opsional)
+  try { bumpPpdbNotif_(id, nama); } catch (e) {}
+  try { maybeEmailPpdb_(id, data); } catch (e) {}
+
   return {
     ok: true,
     id: id,
@@ -506,6 +516,58 @@ function deletePpdb_(id) {
     }
   }
   return { ok: false, error: 'ID tidak ditemukan: ' + id };
+}
+
+
+/* ========== Notifikasi PPDB (lonceng + email) ========== */
+function bumpPpdbNotif_(id, nama) {
+  var props = PropertiesService.getScriptProperties();
+  var count = parseInt(props.getProperty('PPDB_UNREAD') || '0', 10) || 0;
+  count++;
+  props.setProperty('PPDB_UNREAD', String(count));
+  props.setProperty('PPDB_LAST_ID', String(id || ''));
+  props.setProperty('PPDB_LAST_NAME', String(nama || '').slice(0, 80));
+  props.setProperty('PPDB_LAST_AT', new Date().toISOString());
+}
+
+function getPpdbNotif_() {
+  var props = PropertiesService.getScriptProperties();
+  var count = parseInt(props.getProperty('PPDB_UNREAD') || '0', 10) || 0;
+  return {
+    ok: true,
+    count: count,
+    lastId: props.getProperty('PPDB_LAST_ID') || '',
+    lastName: props.getProperty('PPDB_LAST_NAME') || '',
+    lastAt: props.getProperty('PPDB_LAST_AT') || ''
+  };
+}
+
+function markPpdbRead_() {
+  var props = PropertiesService.getScriptProperties();
+  props.setProperty('PPDB_UNREAD', '0');
+  return { ok: true, count: 0, message: 'Notifikasi PPDB ditandai sudah dibaca' };
+}
+
+function maybeEmailPpdb_(id, data) {
+  var props = PropertiesService.getScriptProperties();
+  var to = props.getProperty('PPDB_NOTIFY_EMAIL') || '';
+  if (!to) return; // set di Script Properties: PPDB_NOTIFY_EMAIL
+  var subject = '[PPDB] Pendaftaran baru: ' + (data.nama_lengkap || id);
+  var body = [
+    'Pendaftaran PPDB baru masuk.',
+    '',
+    'No. Registrasi: ' + id,
+    'Nama: ' + (data.nama_lengkap || ''),
+    'NIK: ' + (data.nik || ''),
+    'TTL: ' + [data.tempat_lahir, data.tanggal_lahir].filter(Boolean).join(', '),
+    'HP Ortu: ' + (data.no_hp || ''),
+    'Ayah: ' + (data.ayah_nama || ''),
+    'Ibu: ' + (data.ibu_nama || ''),
+    '',
+    'Buka panel admin → Data Pendaftaran PPDB untuk meninjau.',
+    'Waktu: ' + (data.submitted_at || new Date().toISOString())
+  ].join('\n');
+  MailApp.sendEmail({ to: to, subject: subject, body: body });
 }
 
 function setupToken() {
