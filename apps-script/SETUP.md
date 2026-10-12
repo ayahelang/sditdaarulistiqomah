@@ -225,3 +225,41 @@ Setelah redeploy Apps Script:
    Setiap submit formulir akan mengirim email ringkasan (via `MailApp`).
 
 **Catatan WhatsApp otomatis:** pengiriman WA ke admin tanpa interaksi pengguna membutuhkan WhatsApp Business API / gateway berbayar. Lonceng + email adalah alternatif yang stabil di stack ini.
+
+---
+
+## Keamanan: Script properties (wajib)
+
+Rahasia **tidak** disimpan di `js/config.js` / GitHub. Semua di **Apps Script → Project Settings → Script properties**:
+
+| Property | Fungsi |
+|----------|--------|
+| `API_TOKEN` | Token untuk aksi admin (saveSite, list/update/delete PPDB, mark read) |
+| `ADMIN_PASSWORD` | Password login panel admin + lonceng notifikasi |
+| `PPDB_NOTIFY_EMAIL` | (Opsional) Email penerima notifikasi formulir baru |
+
+### Setup awal
+1. Di editor Apps Script, jalankan fungsi `setupSecrets` sekali (Run).
+2. Buka **Project Settings → Script properties**, **ganti** nilai default:
+   - `API_TOKEN` → string acak panjang (contoh dari password manager)
+   - `ADMIN_PASSWORD` → password admin yang kuat
+   - `PPDB_NOTIFY_EMAIL` → email sekolah (opsional)
+3. **Deploy → New version** Web App.
+
+Login admin memanggil `action=adminLogin` → server cek password → baru mengembalikan `API_TOKEN` ke session browser. Token tidak ada di repo.
+
+### Keamanan Google Sheet (penting)
+
+**Jangan** set share spreadsheet ke *Anyone with the link* sebagai **Editor**.
+
+Setup yang benar:
+1. Spreadsheet **Restricted** (hanya orang spesifik).
+2. Owner = akun yang mendeploy Apps Script.
+3. Deploy Web App: **Execute as: Me** → script menulis ke Sheet sebagai owner, **tanpa** perlu share publik.
+4. Guru yang perlu buka Sheet langsung: **Share → email mereka → Editor** (bukan "anyone").
+5. Website publik hanya memanggil URL Web App, **bukan** URL spreadsheet.
+
+Siapa pun dengan link *Editor* bisa mengubah/menghapus semua data CMS & PPDB.
+
+### config.js yang boleh di GitHub
+Hanya: `sheetsApiUrl`, `useSheets`, `siteCacheTtl`.

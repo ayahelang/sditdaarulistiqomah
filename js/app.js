@@ -835,7 +835,6 @@
             headers: { 'Content-Type': 'text/plain;charset=utf-8' },
             body: JSON.stringify({
               action: 'submitPpdb',
-              token: cfg.apiToken || '',
               data: data
             })
           });
@@ -1002,17 +1001,33 @@
       closePanel();
     });
 
-    const ADMIN_PASS = 'Bismillaah9999#';
-    document.getElementById('ppdbNotifGo').onclick = () => {
+    document.getElementById('ppdbNotifGo').onclick = async () => {
       const pass = (passEl && passEl.value) || '';
-      if (pass !== ADMIN_PASS) {
-        if (errEl) { errEl.textContent = 'Password salah.'; errEl.classList.add('show'); }
+      if (!pass) {
+        if (errEl) { errEl.textContent = 'Masukkan password admin.'; errEl.classList.add('show'); }
         return;
       }
-      try { sessionStorage.setItem('sdit_di_admin_auth_v1', '1'); } catch (_) {}
-      try { sessionStorage.setItem('sdit_di_ppdb_focus', '1'); } catch (_) {}
-      // Admin akan mark read saat buka list PPDB
-      location.href = 'admin/?focus=ppdb';
+      if (errEl) { errEl.textContent = 'Memverifikasi…'; errEl.classList.add('show'); }
+      try {
+        const res = await fetch(cfg.sheetsApiUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify({ action: 'adminLogin', password: pass })
+        });
+        const j = await res.json();
+        if (!j || !j.ok || !j.token) {
+          if (errEl) { errEl.textContent = (j && j.error) || 'Password salah.'; errEl.classList.add('show'); }
+          return;
+        }
+        try {
+          sessionStorage.setItem('sdit_di_admin_auth_v1', '1');
+          sessionStorage.setItem('sdit_di_admin_token_v1', j.token);
+          sessionStorage.setItem('sdit_di_ppdb_focus', '1');
+        } catch (_) {}
+        location.href = 'admin/?focus=ppdb';
+      } catch (e) {
+        if (errEl) { errEl.textContent = 'Gagal menghubungi server.'; errEl.classList.add('show'); }
+      }
     };
     if (passEl) {
       passEl.addEventListener('keydown', (e) => {
@@ -1049,7 +1064,6 @@
 
 
   function setupQuickAdminEdit() {
-    const ADMIN_PASS = 'Bismillaah9999#';
     // Visual cue when modifier held
     let armed = false;
     function setArmed(on) {
@@ -1064,7 +1078,7 @@
     });
     window.addEventListener('blur', () => setArmed(false));
 
-    document.addEventListener('dblclick', (e) => {
+    document.addEventListener('dblclick', async (e) => {
       if (!(e.ctrlKey && e.altKey && e.shiftKey)) return;
       const target = e.target.closest('[data-admin-edit]');
       if (!target) return;
@@ -1075,13 +1089,29 @@
       if (typeof e.stopImmediatePropagation === 'function') e.stopImmediatePropagation();
       const pass = window.prompt('Password admin untuk mengedit item ini:\n(' + key + ')');
       if (pass === null) return;
-      if (pass !== ADMIN_PASS) {
-        window.alert('Password salah.');
-        return;
+      if (!pass) { window.alert('Password wajib.'); return; }
+      const conf = window.SDIT_CONFIG || {};
+      if (!conf.sheetsApiUrl) { window.alert('sheetsApiUrl belum dikonfigurasi.'); return; }
+      try {
+        const res = await fetch(conf.sheetsApiUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify({ action: 'adminLogin', password: pass })
+        });
+        const j = await res.json();
+        if (!j || !j.ok || !j.token) {
+          window.alert((j && j.error) || 'Password salah.');
+          return;
+        }
+        try {
+          sessionStorage.setItem('sdit_di_admin_auth_v1', '1');
+          sessionStorage.setItem('sdit_di_admin_token_v1', j.token);
+        } catch (_) {}
+        const url = 'admin/?edit=' + encodeURIComponent(key);
+        window.open(url, '_blank');
+      } catch (err) {
+        window.alert('Gagal verifikasi: ' + (err.message || err));
       }
-      try { sessionStorage.setItem('sdit_di_admin_auth_v1', '1'); } catch (_) {}
-      const url = 'admin/?edit=' + encodeURIComponent(key);
-      window.open(url, '_blank');
     }, true);
   }
 
