@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin — SDIT Daarul Istiqomah</title>
+  <meta name="theme-color" content="#0B6E4F">
+  <link rel="icon" href="../images/logo.jpg" type="image/jpeg">
+  <link rel="stylesheet" href="../css/style.css">
+  <style>
+    body { background: #eef5f1; }
+    .admin-wrap { width: min(960px, 94vw); margin: 1.5rem auto 3rem; }
+    .admin-card {
+      background: #fff; border-radius: 16px; padding: 1.25rem 1.35rem;
+      box-shadow: 0 8px 28px rgba(8,76,55,.08); margin-bottom: 1.1rem;
+      border: 1px solid rgba(11,110,79,.07);
+    }
+    .admin-card h1 { font-size: 1.35rem; color: var(--primary-dark); margin-bottom: .35rem; }
+    .admin-card h2 { font-size: 1.05rem; color: var(--primary); margin: 0 0 .75rem; }
+    label { display: block; font-size: .85rem; font-weight: 700; color: var(--muted); margin: .6rem 0 .25rem; }
+    input, textarea, select {
+      width: 100%; padding: .65rem .8rem; border-radius: 10px;
+      border: 1px solid rgba(11,110,79,.2); background: #fafcfa;
+    }
+    textarea { min-height: 72px; resize: vertical; }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; }
+    @media (max-width: 640px) { .row { grid-template-columns: 1fr; } }
+    .hint { font-size: .88rem; color: var(--muted); margin-top: .5rem; line-height: 1.5; }
+    .actions { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: 1rem; }
+    .list-item {
+      display: flex;
+      flex-direction: row;
+      flex-wrap: nowrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: .75rem .9rem;
+      background: #f4faf7;
+      border-radius: 10px;
+      font-size: .9rem;
+      margin-bottom: .5rem;
+    }
+    .list-item .li-thumb {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      flex: 0 0 auto;
+      width: 76px;
+    }
+    .list-item .li-info {
+      flex: 1 1 auto;
+      min-width: 0;
+      text-align: left;
+    }
+    .list-item .li-info strong {
+      display: block;
+      margin-top: 2px;
+      word-break: break-word;
+    }
+    .list-item .meta { font-size: .78rem; color: var(--muted); margin-top: .15rem; }
+    .list-item .actions-row {
+      display: flex;
+      flex-direction: row;
+      flex-wrap: nowrap;
+      align-items: center;
+      gap: .4rem;
+      flex: 0 0 auto;
+      margin-left: auto;
+    }
+    .list-item .actions-row .btn {
+      padding: .4rem .75rem;
+      font-size: .8rem;
+      white-space: nowrap;
+    }
+    @media (max-width: 560px) {
+      .list-item {
+        flex-wrap: wrap;
+      }
+      .list-item .actions-row {
+        width: 100%;
+        justify-content: flex-end;
+        margin-left: 0;
+        margin-top: 4px;
+      }
+    }
+    .badge {
+      display: inline-block; padding: .15rem .5rem; font-size: .72rem; font-weight: 700;
+      border-radius: 999px; background: var(--accent-soft); color: var(--primary-dark);
+      margin-right: .35rem;
+    }
+    .badge.video { background: #dbeafe; color: #1e40af; }
+    .badge.foto { background: #d1fae5; color: #065f46; }
+    .status-bar {
+      position: sticky; top: 0; z-index: 50; background: var(--primary-dark); color: #fff;
+      padding: .55rem 1rem; font-size: .88rem; text-align: center;
+    }
+    .detect-box {
+      background: #f0fdf4; border: 1px dashed rgba(11,110,79,.3);
+      border-radius: 12px; padding: 1rem; margin-top: .75rem; display: none;
+    }
+    .detect-box.show { display: block; }
+    .detect-box strong { color: var(--primary-dark); }
+    code { background: #eef5f1; padding: .1rem .35rem; border-radius: 4px; font-size: .85em; }
+  
+    #adminLogin {
+      position: fixed; inset: 0; z-index: 99999;
+      background: linear-gradient(145deg, #084C37, #0B6E4F);
+      display: grid; place-items: center; padding: 1.5rem;
+      visibility: visible; opacity: 1;
+    }
+    /* .hidden always wins over body.admin-locked (higher specificity) */
+    body.admin-locked #adminLogin.hidden,
+    #adminLogin.hidden {
+      display: none !important;
+      visibility: hidden !important;
+      pointer-events: none !important;
+      opacity: 0 !important;
+    }
+    body.admin-locked #adminApp { display: none !important; }
+    body.admin-locked #adminLogin:not(.hidden) { display: grid !important; }
+    body:not(.admin-locked) #adminApp:not(.locked) { display: block !important; }
+    .login-card {
+      background: #fff; border-radius: 18px; padding: 1.75rem 1.5rem;
+      width: min(400px, 100%); box-shadow: 0 20px 50px rgba(0,0,0,.25);
+    }
+    .login-card h1 { font-size: 1.2rem; color: #084C37; margin-bottom: .35rem; }
+    .login-card p { font-size: .88rem; color: #5c6b66; margin-bottom: 1rem; }
+    .login-card input {
+      width: 100%; padding: .75rem .9rem; border-radius: 10px;
+      border: 1.5px solid rgba(11,110,79,.25); margin-bottom: .75rem;
+      font-size: 1rem;
+    }
+    .login-card .err { color: #b91c1c; font-size: .85rem; min-height: 1.2em; margin-bottom: .5rem; }
+    #adminApp.locked { display: none !important; }
+
+    .edit-modal {
+      position: fixed; inset: 0; z-index: 10000;
+      background: rgba(8,30,22,.55);
+      display: grid; place-items: center; padding: 1rem;
+    }
+    .edit-modal[hidden] { display: none !important; }
+    .edit-modal-inner {
+      background: #fff; border-radius: 16px; padding: 1.35rem 1.4rem;
+      width: min(520px, 100%); max-height: 90vh; overflow: auto;
+      box-shadow: 0 24px 60px rgba(0,0,0,.3);
+    }
+    .edit-modal-inner h2 { font-size: 1.1rem; color: #084C37; margin-bottom: .75rem; }
+
+
+  
+  
+    /* Large detailed tooltips */
+    [data-tip] {
+      position: relative;
+    }
+    [data-tip]::after {
+      content: attr(data-tip);
+      position: absolute;
+      left: 50%; bottom: calc(100% + 10px);
+      transform: translateX(-50%) translateY(4px);
+      background: #0f2e24;
+      color: #fff;
+      font-size: .82rem;
+      font-weight: 500;
+      line-height: 1.45;
+      text-align: left;
+      padding: .75rem .9rem;
+      border-radius: 12px;
+      width: max(220px, min(320px, 70vw));
+      white-space: normal;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .15s ease, transform .15s ease;
+      z-index: 1000;
+      box-shadow: 0 12px 32px rgba(0,0,0,.28);
+      border: 1px solid rgba(255,255,255,.12);
+    }
+    [data-tip]::before {
+      content: '';
+      position: absolute;
+      left: 50%; bottom: calc(100% + 4px);
+      transform: translateX(-50%);
+      border: 7px solid transparent;
+      border-top-color: #0f2e24;
+      opacity: 0;
+      transition: opacity .15s ease;
+      z-index: 1001;
+    }
+    [data-tip]:hover::after,
+    [data-tip]:focus-visible::after {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+    [data-tip]:hover::before,
+    [data-tip]:focus-visible::before {
+      opacity: 1;
+    }
+
+  
+    /* Match site theme */
+    * { scrollbar-width: thin; scrollbar-color: #0B6E4F #e8f2ed; }
+    *::-webkit-scrollbar { width: 10px; height: 10px; }
+    *::-webkit-scrollbar-track { background: #e8f2ed; border-radius: 999px; }
+    *::-webkit-scrollbar-thumb {
+      background: linear-gradient(180deg, #0d8a62, #0B6E4F);
+      border-radius: 999px; border: 2px solid #e8f2ed;
+    }
+    ::selection { background: rgba(11,110,79,.28); color: #084C37; }
+    .edit-modal { background: rgba(8, 76, 55, 0.82) !important; backdrop-filter: blur(6px); }
+    .edit-modal-inner {
+      border: 2px solid rgba(201, 162, 39, 0.4);
+      box-shadow: 0 24px 60px rgba(8, 76, 55, 0.35);
+    }
+    input, textarea, select { accent-color: #0B6E4F; caret-color: #0B6E4F; }
+
+
+    .media-preview-box {
+      margin-top: 12px; border: 1px solid rgba(11,110,79,.15); border-radius: 12px;
+      overflow: hidden; background: #0f172a08; min-height: 80px; position: relative;
+    }
+    .media-preview-box.ok { border-color: #12A87A; }
+    .media-preview-box.err { border-color: #c0392b; background: #fdecea; }
+    .media-preview-box img { width: 100%; max-height: 280px; object-fit: contain; background: #111; display: block; }
+    .media-preview-box iframe { display: block; }
+    .media-preview-box.none { padding: 14px; color: #5B6575; font-size: .9rem; }
+    .media-preview-fail { padding: 12px; color: #c0392b; font-size: .88rem; }
+    .media-preview-note { padding: 8px 10px; font-size: .75rem; color: #5B6575; margin: 0; background: #fff; }
+    .list-item .thumb-prev {
+      width: 72px; height: 54px; border-radius: 8px; object-fit: cover;
+      background: #eee; flex-shrink: 0; border: 1px solid rgba(0,0,0,.08);
+      display: block;
+    }
+    .list-item .thumb-prev.err { outline: 2px solid #c0392b; }
+    .preview-status { font-size: .75rem; margin-top: 4px; }
+    .preview-status.ok { color: #0B6E4F; font-weight: 700; }
+    .preview-status.err { color: #c0392b; font-weight: 700; }
+    #detectPreview { margin-top: 14px; }
+
+    #previewOverlay {
+      display: none; position: fixed; inset: 0; z-index: 9999;
+      background: rgba(15,23,42,.55); align-items: center; justify-content: center;
+      padding: 20px;
+    }
+    #previewOverlay.open { display: flex; }
+    .preview-card {
+      background: #fff; border-radius: 16px; max-width: 560px; width: 100%;
+      box-shadow: 0 24px 64px rgba(0,0,0,.25); overflow: hidden;
+    }
+    .preview-card-head {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 12px 16px; border-bottom: 1px solid #e8e4d8;
+    }
+    .preview-card-body { padding: 14px 16px 18px; }
+    .status-bar.flash {
+      background: #0B6E4F !important; color: #fff !important;
+      transition: background .2s;
+    }
+
+    .ann-admin-preview {
+      border: 1px dashed rgba(11,110,79,.3); border-radius: 12px; padding: 10px;
+      background: #f8faf8; margin-top: 8px; min-height: 80px;
+    }
+    .ann-admin-preview img { max-width: 100%; max-height: 160px; border-radius: 8px; display: block; margin-bottom: 8px; }
+    .ann-paste-zone {
+      border: 2px dashed rgba(11,110,79,.35); border-radius: 12px; padding: 14px;
+      text-align: center; color: var(--muted); font-size: .88rem; margin-top: 8px;
+      background: #fff; cursor: pointer;
+    }
+    .ann-paste-zone:focus, .ann-paste-zone.drag { border-color: var(--primary); background: #f0faf5; outline: none; }
+  </style>
+  <link rel="stylesheet" href="../css/lock.css">
+</head>
+<body class="admin-locked"
+  data-shlock-mode="lite"
+  data-shlock-domain="darulistiqomah.silverhawk.web.id,localhost,127.0.0.1"
+  data-shlock-brand="SDIT Daarul Istiqomah Admin"
+  data-shlock-social="https://www.instagram.com/sdit_daarul_istiqomah/"
+>
+  
+  <div id="adminLogin">
+    <div class="login-card">
+      <h1>🔒 Admin SDIT Daarul Istiqomah</h1>
+      <p>Masukkan password admin untuk mengakses panel.</p>
+      <div class="err" id="loginErr"></div>
+      <input type="password" id="loginPass" placeholder="Password admin" autocomplete="current-password">
+      <button class="btn btn-primary" type="button" id="btnLogin" data-tip="Masuk ke panel admin setelah password diisi dengan benar." style="width:100%">Masuk</button>
+      <p style="margin-top:1rem;font-size:.8rem;text-align:center"><a href="../">← Kembali ke website</a></p>
+    </div>
+  </div>
+
+  <div id="adminApp" class="locked">
+  <div class="status-bar" id="status">Memuat…</div>
+
+  <div class="admin-wrap">
+    <div class="admin-card">
+      <h1>Panel Admin</h1>
+      <p class="hint">SDIT Daarul Istiqomah — kelola profil, berita, dan media dari link Instagram/Facebook.</p>
+      <div class="actions">
+        <a class="btn btn-ghost" href="../" data-tip="Kembali ke halaman website publik tanpa menyimpan otomatis. Simpan dulu jika ada perubahan.">← Kembali ke Website</a>
+        <button class="btn btn-primary" type="button" id="btnLoad" data-tip="Muat ulang data dari Google Sheets (sumber utama).">Muat Data</button>
+        <button class="btn btn-accent" type="button" id="btnSave" data-tip="Simpan SEMUA data website ke Google Sheets. Pengunjung & admin lain akan melihat data yang sama.">Simpan ke Google Sheets</button>
+        <button class="btn btn-ghost" type="button" id="btnReset" data-tip="Hapus semua edit lokal di browser dan kembalikan ke isi asli data/site.json. Tindakan ini tidak bisa dibatalkan.">Reset ke JSON Asli</button>
+        <button class="btn btn-ghost" type="button" id="btnExport" data-tip="Unduh file site.json berisi seluruh data saat ini. Untuk produksi: upload file ini ke folder data/ di hosting agar perubahan tampil untuk semua pengunjung.">Export JSON</button>
+        <button class="btn btn-primary" type="button" id="btnSyncSheets" data-tip="Kirim daftar media (foto/video dari link IG/FB) ke Google Sheets. Memerlukan sheetsApiUrl dan apiToken di js/config.js. Berguna agar guru lain bisa melihat data yang sama.">Simpan ulang ke Sheets</button>
+        <button class="btn btn-ghost" type="button" id="btnLogout" data-tip="Keluar dari panel admin dan wajib isi password lagi saat masuk berikutnya.">Keluar</button>
+        <button class="btn btn-ghost" type="button" id="btnPullSheets" data-tip="Ambil daftar media dari Google Sheets dan timpa media di panel ini. Memerlukan konfigurasi Sheets aktif. Data kemudian disimpan juga ke browser.">Muat dari Sheets</button>
+      </div>
+      <p class="hint" id="sheetsHint">Google Sheets: belum dikonfigurasi. Isi <code>js/config.js</code> — lihat <code>apps-script/SETUP.md</code>.</p>
+    </div>
+
+    <div class="admin-card">
+      <h2>➕ Tambah Media dari IG / FB / YouTube / TikTok / X</h2>
+      <p class="hint">
+        Paste link Instagram, Facebook, YouTube, TikTok, X/Twitter, atau URL gambar/thumbnail (hotlink).
+        Sistem mendeteksi otomatis <strong>foto</strong> atau <strong>video</strong>, lalu menampilkan <strong>preview</strong>.
+      </p>
+      <label>Link media</label>
+      <input id="mediaUrl" type="url" placeholder="https://www.instagram.com/reel/… · youtube.com · tiktok.com · x.com · URL .jpg">
+      <div class="actions">
+        <button class="btn btn-primary" type="button" id="btnDetect" data-tip="Analisis link dan tampilkan preview apakah media bisa dimuat.">Deteksi & Preview</button>
+      </div>
+      <div class="detect-box" id="detectBox">
+        <p><strong>Hasil deteksi:</strong> <span id="detectResult">—</span></p>
+        <div id="detectPreview"></div>
+        <div class="row">
+          <div>
+            <label>Judul (opsional)</label>
+            <input id="mediaTitle" type="text" placeholder="Otomatis dari jenis media">
+          </div>
+          <div>
+            <label>Kategori (opsional)</label>
+            <input id="mediaCategory" type="text" placeholder="Foto / Video / Kegiatan">
+          </div>
+        </div>
+        <label>URL Thumbnail (opsional — jika preview kosong, tempel hotlink gambar)</label>
+        <input id="mediaThumb" type="url" placeholder="https://…/image.jpg">
+        <label>Deskripsi (opsional)</label>
+        <textarea id="mediaDesc" placeholder="Caption singkat — boleh kosong"></textarea>
+        <div class="actions">
+          <button class="btn btn-accent" type="button" id="btnAddMedia" data-tip="Tambahkan media ke daftar setelah preview OK.">Tambahkan ke Galeri</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="admin-card">
+      <h2>Media (Foto & Video)</h2>
+      <div class="list" id="mediaList"></div>
+      <p class="hint">Item <span class="badge video">video</span> → section Video. <span class="badge foto">foto</span> → Galeri Foto.</p>
+    </div>
+
+    <div class="admin-card">
+      <h2>Profil Sekolah</h2>
+      <div class="row">
+        <div>
+          <label>Nama sekolah</label>
+          <input id="fName" type="text">
+        </div>
+        <div>
+          <label>Tagline</label>
+          <input id="fTagline" type="text">
+        </div>
+      </div>
+      <label>Alamat</label>
+      <input id="fAddress" type="text">
+      <div class="row">
+        <div>
+          <label>Email</label>
+          <input id="fEmail" type="email">
+        </div>
+        <div>
+          <label>WhatsApp (62…)</label>
+          <input id="fWa" type="text">
+        </div>
+      </div>
+    </div>
+
+
+    <div class="admin-card">
+      <h2>📢 Pengumuman</h2>
+      <p class="hint">
+        Tampil di halaman publik sebagai <strong>popup</strong>, banner atas/bawah, atau float.
+        Atur jadwal mulai–selesai, durasi, dan frekuensi. Gambar bisa di-upload URL atau
+        <strong>Ctrl+V screenshot</strong> di zona paste.
+        Default aman: popup, 12 detik, sekali per sesi, bisa ditutup.
+      </p>
+      <div class="list" id="annList"></div>
+      <div class="actions">
+        <button class="btn btn-primary" type="button" id="btnAddAnn">+ Tambah Pengumuman</button>
+      </div>
+
+      <div id="annEditor" hidden style="margin-top:1rem;padding-top:1rem;border-top:1px solid rgba(11,110,79,.12)">
+        <h3 id="annEditorTitle" style="font-size:1rem;color:#084C37;margin-bottom:.75rem">Edit pengumuman</h3>
+        <label>Judul</label>
+        <input type="text" id="annTitle" placeholder="Judul pengumuman">
+        <label>Isi pesan</label>
+        <textarea id="annBody" placeholder="Teks pengumuman…"></textarea>
+        <div class="row">
+          <div>
+            <label>Mode tampilan</label>
+            <select id="annMode">
+              <option value="popup">Popup tengah (modal)</option>
+              <option value="top">Banner atas (sticky)</option>
+              <option value="bottom">Banner bawah (sticky)</option>
+              <option value="float-left">Float kiri bawah</option>
+              <option value="float-right">Float kanan bawah</option>
+              <option value="corner">Kartu pojok kanan</option>
+            </select>
+          </div>
+          <div>
+            <label>Frekuensi</label>
+            <select id="annFreq">
+              <option value="session">Sekali per sesi tab</option>
+              <option value="once">Sekali saja (selamanya di browser)</option>
+              <option value="always">Setiap kunjungan / refresh</option>
+            </select>
+          </div>
+        </div>
+        <div class="row">
+          <div>
+            <label>Mulai (kosong = segera)</label>
+            <input type="datetime-local" id="annStart">
+          </div>
+          <div>
+            <label>Selesai (kosong = tanpa batas)</label>
+            <input type="datetime-local" id="annEnd">
+          </div>
+        </div>
+        <div class="row">
+          <div>
+            <label>Durasi tampil (detik, default 12)</label>
+            <input type="number" id="annDuration" min="3" max="300" placeholder="12">
+          </div>
+          <div>
+            <label>Prioritas (angka besar = lebih dulu)</label>
+            <input type="number" id="annPriority" min="0" max="100" placeholder="0">
+          </div>
+        </div>
+        <div class="row">
+          <div>
+            <label>Teks tombol CTA (opsional)</label>
+            <input type="text" id="annCtaText" placeholder="Selengkapnya">
+          </div>
+          <div>
+            <label>Link CTA</label>
+            <input type="url" id="annCtaLink" placeholder="https://…">
+          </div>
+        </div>
+        <label>URL gambar (opsional)</label>
+        <input type="url" id="annImage" placeholder="https://… atau tempel screenshot di bawah">
+        <div class="ann-paste-zone" id="annPaste" tabindex="0">
+          Klik di sini lalu <strong>Ctrl+V</strong> untuk menempel screenshot dari clipboard<br>
+          <span style="font-size:.8rem">Gambar di-resize otomatis agar muat di Sheets</span>
+        </div>
+        <div class="ann-admin-preview" id="annPreview"></div>
+        <div class="row" style="margin-top:.75rem">
+          <div>
+            <label>Aktif</label>
+            <select id="annActive">
+              <option value="true">Ya</option>
+              <option value="false">Tidak</option>
+            </select>
+          </div>
+          <div>
+            <label>Bisa ditutup (tombol ×)</label>
+            <select id="annDismiss">
+              <option value="true">Ya</option>
+              <option value="false">Tidak</option>
+            </select>
+          </div>
+        </div>
+        <div class="actions">
+          <button class="btn btn-accent" type="button" id="btnAnnSave">Simpan pengumuman</button>
+          <button class="btn btn-primary" type="button" id="btnAnnPreview" data-tip="Buka halaman publik di tab baru dan tampilkan pengumuman ini (mode preview, mengabaikan jadwal).">Preview di website</button>
+          <button class="btn btn-ghost" type="button" id="btnAnnCancel">Batal</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="admin-card">
+      <h2>Carousel</h2>
+      <div class="list" id="carouselList"></div>
+      <div class="actions">
+        <button class="btn btn-primary" type="button" id="btnAddCarousel" data-tip="Tambah slide baru di carousel beranda. Anda akan mengisi judul, subtitle, gambar, dan tombol CTA lewat form Edit.">+ Tambah Slide</button>
+      </div>
+    </div>
+
+    <div class="admin-card">
+      <h2>Artikel / Berita</h2>
+      <div class="list" id="articleList"></div>
+      <div class="actions">
+        <button class="btn btn-primary" type="button" id="btnAddArticle" data-tip="Tambah berita/artikel baru. Isi judul, kategori, tanggal, ringkasan, dan gambar lewat form yang muncul.">+ Tambah Artikel</button>
+      </div>
+    </div>
+
+    
+    <div class="admin-card">
+      <h2>Video (YouTube)</h2>
+      <div class="list" id="videoList"></div>
+      <div class="actions">
+        <button class="btn btn-primary" type="button" id="btnAddVideo" data-tip="Tambah video YouTube ke section Video. Isi judul, YouTube ID (kode setelah v=), dan URL thumbnail.">+ Tambah Video</button>
+      </div>
+    </div>
+
+    <div class="admin-card">
+      <h2>Galeri Foto (URL langsung)</h2>
+      <div class="list" id="galleryList"></div>
+      <div class="actions">
+        <button class="btn btn-primary" type="button" id="btnAddGallery" data-tip="Tambah foto ke galeri dengan URL/path gambar langsung (bukan link post IG). Untuk link IG, gunakan form Tambah Media di atas.">+ Tambah Foto (URL gambar)</button>
+      </div>
+    </div>
+
+    <div class="admin-card">
+      <h2>PPDB</h2>
+      <div class="row">
+        <div>
+          <label>Tahun ajaran</label>
+          <input id="fPpdbYear" type="text">
+        </div>
+        <div>
+          <label>Status buka</label>
+          <select id="fPpdbOpen">
+            <option value="true">Dibuka</option>
+            <option value="false">Ditutup</option>
+          </select>
+        </div>
+      </div>
+      <label>Catatan PPDB</label>
+      <textarea id="fPpdbNote"></textarea>
+    </div>
+
+    <div class="admin-card">
+      <h2>Setup database</h2>
+      <p class="hint">
+        <strong>Google Sheets + Apps Script</strong> — ikuti <code>apps-script/SETUP.md</code>.
+        Multi-guru: share Spreadsheet (Editor). Token di <code>js/config.js</code>.
+      </p>
+    </div>
+  </div>
+
+  </div><!-- /adminApp -->
+
+  <footer class="site-footer" style="margin-top:2rem;">
+    <div class="container footer-bottom" style="border:0;padding:1rem 0;">
+      <span>Admin SDIT Daarul Istiqomah</span>
+      <span class="powered">Powered by <a href="https://silverhawk.web.id" target="_blank" rel="noopener">silverhawk.web.id</a></span>
+    </div>
+  </footer>
+
+  
+  <!-- CRUD Editor Modal -->
+  <div id="editModal" class="edit-modal" hidden>
+    <div class="edit-modal-inner">
+      <h2 id="editModalTitle">Edit</h2>
+      <div id="editFields"></div>
+      <div class="actions" style="margin-top:1rem">
+        <button class="btn btn-accent" type="button" id="btnEditSave" data-tip="Simpan perubahan item ini ke data di memori. Setelah itu klik tombol Simpan ke Google Sheets agar data tidak hilang saat refresh.">Simpan</button>
+        <button class="btn btn-ghost" type="button" id="btnEditCancel" data-tip="Tutup form tanpa menyimpan perubahan pada item ini.">Batal</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="../js/config.js"></script>
+  <script src="../js/media-utils.js"></script>
+  <script src="../js/admin.js"></script>
+  <script src="../js/lock.js"></script>
+</body>
+</html>

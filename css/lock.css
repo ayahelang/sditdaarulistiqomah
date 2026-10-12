@@ -1,0 +1,73 @@
+/* =========================
+   FILE: /lock/lock.css
+   FINAL PACK V2
+========================= */
+
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
+img {
+    -webkit-user-drag: none;
+    user-drag: none;
+}
+
+.__shlk_follow_btn {
+    position: fixed !important;
+    right: 14px !important;
+    bottom: 70px !important;
+    z-index: 999998 !important;
+
+    background: #0ea5e9 !important;
+    color: #fff !important;
+
+    padding: 10px 14px !important;
+    border-radius: 999px !important;
+
+    text-decoration: none !important;
+    font-family: Arial, sans-serif !important;
+    font-size: 14px !important;
+    font-weight: 700 !important;
+
+    box-shadow: 0 10px 25px rgba(0, 0, 0, .18) !important;
+    transition: .2s ease !important;
+}
+
+.__shlk_follow_btn:hover {
+    opacity: .92 !important;
+    transform: translateY(-2px) !important;
+}
+
+#__shlk_toast {
+    max-width: 92vw;
+    text-align: center;
+}
+
+body::after {
+    content: "© Silverhawk Network";
+    position: fixed;
+    right: 8px;
+    bottom: 8px;
+    font-size: 11px;
+    opacity: .25;
+    z-index: 99999;
+    pointer-events: none;
+    font-family: Arial, sans-serif;
+}
+
+/* Mobile */
+@media(max-width:768px) {
+
+    .__shlk_follow_btn {
+        right: 10px !important;
+        bottom: 62px !important;
+        padding: 9px 12px !important;
+        font-size: 13px !important;
+    }
+
+    body::after {
+        font-size: 10px;
+    }
+}

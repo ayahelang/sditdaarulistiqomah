@@ -1,0 +1,241 @@
+{
+  "school": {
+    "name": "SDIT Daarul Istiqomah",
+    "fullName": "Sekolah Dasar Islam Terpadu Daarul Istiqomah",
+    "tagline": "Membentuk Generasi Qurani, Cerdas, dan Berakhlak Mulia",
+    "npsn": "70045471",
+    "accreditation": "A",
+    "address": "Jl. Manunggal RT.03/12, Tajur Halang, Kec. Tajurhalang, Kab. Bogor, Jawa Barat",
+    "email": "darulistiqomahsdit@gmail.com",
+    "emailYayasan": "yayasandaarulistiqomah24@gmail.com",
+    "whatsapp": "62895355357028",
+    "instagram": "https://www.instagram.com/sdit_daarul_istiqomah/",
+    "instagramAlt": "https://www.instagram.com/sd_it_darul_istiqomah/",
+    "domain": "https://darulistiqomah.silverhawk.web.id",
+    "mapsEmbed": "https://www.google.com/maps?q=-6.4804,106.7577&z=16&output=embed"
+  },
+  "brand": {
+    "primary": "#0B6E4F",
+    "primaryDark": "#084C37",
+    "primaryLight": "#12A87A",
+    "accent": "#C9A227",
+    "accentSoft": "#F5E6B8",
+    "cream": "#F7F4EC",
+    "ink": "#1A1F2C",
+    "muted": "#5B6575"
+  },
+  "carousel": [
+    {
+      "id": "c1",
+      "title": "Selamat Datang di SDIT Daarul Istiqomah",
+      "subtitle": "Pendidikan Islam Terpadu · Akreditasi A · Tajurhalang, Bogor",
+      "cta": "Daftar PPDB",
+      "ctaLink": "#ppdb",
+      "image": "images/upacara.jpg",
+      "active": true,
+      "imagePosition": "center 35%"
+    },
+    {
+      "id": "c2",
+      "title": "Generasi Qurani yang Berprestasi",
+      "subtitle": "Tahfidz, adab, sains, dan karakter dalam satu kurikulum utuh",
+      "cta": "Lihat Program",
+      "ctaLink": "#program",
+      "image": "images/sanlat.jpg",
+      "active": true,
+      "imagePosition": "center 22%"
+    },
+    {
+      "id": "c3",
+      "title": "Belajar dengan Senang & Bermakna",
+      "subtitle": "Lingkungan aman, guru berdedikasi, fasilitas mendukung",
+      "cta": "Jelajahi Galeri",
+      "ctaLink": "#galeri",
+      "image": "images/belajar.jpg",
+      "active": true,
+      "imagePosition": "center 40%"
+    }
+  ],
+  "stats": [
+    {
+      "label": "Akreditasi",
+      "value": "A"
+    },
+    {
+      "label": "Kurikulum",
+      "value": "Merdeka"
+    },
+    {
+      "label": "Program",
+      "value": "Tahfidz +"
+    },
+    {
+      "label": "Lokasi",
+      "value": "Bogor"
+    }
+  ],
+  "programs": [
+    {
+      "icon": "📖",
+      "title": "Tahfidz Al-Qur'an",
+      "desc": "Program hafalan bertahap dengan muroja'ah rutin dan pembiasaan adab Qurani."
+    },
+    {
+      "icon": "🧠",
+      "title": "Kurikulum Merdeka",
+      "desc": "Pembelajaran berdiferensiasi, project-based, dan penguatan literasi-numerasi."
+    },
+    {
+      "icon": "🌱",
+      "title": "Adab & Karakter",
+      "desc": "Pembiasaan shalat, doa harian, kejujuran, disiplin, dan kepedulian sosial."
+    },
+    {
+      "icon": "🔬",
+      "title": "Sains & Literasi",
+      "desc": "Eksplorasi sains sederhana, membaca bersama, dan presentasi siswa."
+    },
+    {
+      "icon": "🎨",
+      "title": "Seni & Kreativitas",
+      "desc": "Kaligrafi, seni rupa, musik Islami, dan unjuk karya berkala."
+    },
+    {
+      "icon": "🏃",
+      "title": "Olahraga & Kesehatan",
+      "desc": "Aktivitas jasmani, outbound ringan, dan edukasi hidup bersih sehat."
+    }
+  ],
+  "articles": [
+    {
+      "id": "a1",
+      "title": "Kegiatan Mabit & Pembinaan Akhlak",
+      "date": "2026-09-15",
+      "excerpt": "Siswa mengikuti malam bina iman dan takwa dengan fokus adab, shalat berjamaah, dan refleksi diri.",
+      "image": "images/sanlat.jpg",
+      "category": "Kegiatan"
+    },
+    {
+      "id": "a2",
+      "title": "Prestasi Lomba Tahfidz Tingkat Kecamatan",
+      "date": "2026-08-28",
+      "excerpt": "Alhamdulillah, perwakilan SDIT Daarul Istiqomah meraih prestasi membanggakan di lomba tahfidz.",
+      "image": "images/piala.jpg",
+      "category": "Prestasi"
+    },
+    {
+      "id": "a3",
+      "title": "Outing Class: Belajar di Alam",
+      "date": "2026-07-12",
+      "excerpt": "Pembelajaran outdoor mengajak siswa mengamati ciptaan Allah dan menerapkan sikap ilmiah.",
+      "image": "images/event.jpg",
+      "category": "Kegiatan"
+    }
+  ],
+  "gallery": [
+    {
+      "id": "g1",
+      "title": "Kegiatan Belajar",
+      "image": "images/belajar.jpg",
+      "type": "foto"
+    },
+    {
+      "id": "g2",
+      "title": "Shalat Berjamaah",
+      "image": "images/shalat.jpg",
+      "type": "foto"
+    },
+    {
+      "id": "g3",
+      "title": "Olahraga & Permainan",
+      "image": "images/olahraga.jpg",
+      "type": "foto"
+    },
+    {
+      "id": "g4",
+      "title": "Kegiatan Event Sekolah",
+      "image": "images/event.jpg",
+      "type": "foto"
+    },
+    {
+      "id": "g5",
+      "title": "Upacara Bendera",
+      "image": "images/upacara.jpg",
+      "type": "foto"
+    },
+    {
+      "id": "g6",
+      "title": "Upacara Kemerdekaan",
+      "image": "images/upacara-merdeka.jpg",
+      "type": "foto"
+    }
+  ],
+  "videos": [
+    {
+      "id": "v1",
+      "title": "Inspirasi Generasi Qurani",
+      "youtubeId": "fKsAN6miXco",
+      "thumb": "images/upacara.jpg"
+    },
+    {
+      "id": "v2",
+      "title": "Kegiatan Tahfidz",
+      "youtubeId": "ONswHTlUH-0",
+      "thumb": "images/mabit.jpg"
+    }
+  ],
+  "activities": [
+    {
+      "id": "k1",
+      "title": "Upacara & Apel Pagi",
+      "day": "Senin",
+      "desc": "Pembinaan disiplin dan nasionalisme."
+    },
+    {
+      "id": "k2",
+      "title": "Tahfidz Harian",
+      "day": "Senin–Jumat",
+      "desc": "Setoran dan muroja'ah terjadwal."
+    },
+    {
+      "id": "k3",
+      "title": "Jum'at Berkah",
+      "day": "Jumat",
+      "desc": "Infaq, kultum siswa, dan kebersihan bersama."
+    },
+    {
+      "id": "k4",
+      "title": "Ekstrakurikuler",
+      "day": "Sabtu",
+      "desc": "Pramuka, seni, olahraga, dan klub sains."
+    }
+  ],
+  "ppdb": {
+    "open": true,
+    "year": "2026/2027",
+    "note": "Pendaftaran dibuka. Kuota terbatas. Hubungi admin WhatsApp untuk info lengkap.",
+    "requirements": [
+      "Usia sesuai ketentuan PPDB SD",
+      "Fotokopi Akta Kelahiran",
+      "Fotokopi Kartu Keluarga",
+      "Fotokopi KTP orang tua/wali",
+      "Pas foto terbaru"
+    ]
+  },
+  "media": [
+    {
+      "id": "m_sample_reel",
+      "url": "https://www.instagram.com/reel/Dd2o1WyysUR/",
+      "type": "video",
+      "source": "instagram",
+      "shortcode": "Dd2o1WyysUR",
+      "title": "Contoh Reel Instagram",
+      "description": "Ganti dengan link resmi sekolah di panel admin.",
+      "category": "Video",
+      "thumb": "",
+      "embedUrl": "https://www.instagram.com/reel/Dd2o1WyysUR/embed",
+      "active": true,
+      "date": "2026-10-10"
+    }
+  ]
+}

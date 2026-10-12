@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SDIT Daarul Istiqomah — Membentuk Generasi Qurani</title>
+  <meta name="description" content="Website resmi SDIT Daarul Istiqomah Tajurhalang, Bogor. Sekolah Dasar Islam Terpadu, Akreditasi A.">
+  <meta name="theme-color" content="#0B6E4F">
+  <link rel="icon" href="images/logo.jpg" type="image/jpeg">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/lock.css">
+</head>
+<body
+  data-shlock-mode="ultimate"
+  data-shlock-domain="darulistiqomah.silverhawk.web.id,localhost,127.0.0.1"
+  data-shlock-brand="SDIT Daarul Istiqomah"
+  data-shlock-social="https://www.instagram.com/sdit_daarul_istiqomah/"
+>
+  <header class="site-header">
+    <div class="container nav-wrap">
+      <a class="brand" href="#beranda">
+        <img class="brand-logo-img" src="images/logo.jpg" alt="Logo SDIT Daarul Istiqomah" width="44" height="44">
+        <div class="brand-text">
+          <strong id="schoolName">SDIT Daarul Istiqomah</strong>
+          <span>Tajurhalang · Bogor</span>
+        </div>
+      </a>
+      <button class="nav-toggle" id="navToggle" aria-label="Menu"><span></span><span></span><span></span></button>
+      <nav class="nav-links" id="navLinks">
+        <a href="#beranda">Beranda</a>
+        <a href="#tentang">Tentang</a>
+        <a href="#program">Program</a>
+        <a href="#berita">Berita</a>
+        <a href="#galeri">Galeri</a>
+        <a href="#kegiatan">Kegiatan</a>
+        <a href="#ppdb">PPDB</a>
+        <a href="#kontak">Kontak</a>
+        <a class="btn btn-primary nav-cta" href="#ppdb">Daftar</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <!-- Pengumuman dinamis -->
+    <div id="annRoot" aria-live="polite"></div>
+    <section class="hero" id="beranda">
+      <div class="carousel" id="carousel" aria-label="Carousel"></div>
+      <div class="carousel-nav" id="carouselDots"></div>
+    </section>
+
+    <div class="container">
+      <div class="stats" id="stats"></div>
+    </div>
+
+    <section id="tentang">
+      <div class="container about-panel">
+        <div class="copy">
+          <div class="label" style="color:var(--primary);font-weight:800;font-size:.8rem;letter-spacing:.08em;text-transform:uppercase;">Profil Sekolah</div>
+          <h2 id="schoolFullName">Sekolah Dasar Islam Terpadu Daarul Istiqomah</h2>
+          <p id="schoolTagline">Membentuk Generasi Qurani, Cerdas, dan Berakhlak Mulia</p>
+          <p>
+            SDIT Daarul Istiqomah berkomitmen menghadirkan pendidikan dasar yang memadukan
+            ilmu pengetahuan, adab Islami, dan pembiasaan Qurani. Kami mendampingi tumbuh kembang
+            anak dalam lingkungan yang aman, hangat, dan inspiratif.
+          </p>
+          <p>
+            Terletak di Tajurhalang, Kabupaten Bogor, sekolah ini mengutamakan kolaborasi
+            antara guru, orang tua, dan komunitas untuk membentuk karakter peserta didik.
+          </p>
+          <a class="btn btn-primary" href="#program">Lihat Program Unggulan</a>
+        </div>
+        <div class="visual">
+          <div>
+            <strong>A</strong>
+            Akreditasi Sekolah
+            <p style="opacity:.85;margin-top:.5rem;font-size:.95rem;">NPSN 70045471 · Kurikulum Merdeka</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="program" style="background:#fff;">
+      <div class="container">
+        <div class="section-head">
+          <div class="label">Program</div>
+          <h2>Program Unggulan</h2>
+          <p>Pembelajaran terpadu yang menumbuhkan iman, ilmu, dan keterampilan hidup.</p>
+        </div>
+        <div class="grid-3" id="programs"></div>
+      </div>
+    </section>
+
+    <section id="berita">
+      <div class="container">
+        <div class="section-head">
+          <div class="label">Informasi</div>
+          <h2>Berita & Artikel</h2>
+          <p>Kabar kegiatan, prestasi, dan informasi terbaru dari sekolah.</p>
+        </div>
+        <div class="grid-3" id="articles"></div>
+        <div class="load-more-wrap" id="articlesMoreWrap" hidden>
+          <button type="button" class="btn btn-ghost load-more-btn" id="articlesMore">Muat lebih banyak</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="galeri" style="background:#fff;">
+      <div class="container">
+        <div class="section-head">
+          <div class="label">Galeri</div>
+          <h2>Galeri Foto</h2>
+          <p>Momen belajar, ibadah, dan kebersamaan siswa.</p>
+        </div>
+        <div class="gallery-grid" id="gallery"></div>
+        <div class="load-more-wrap" id="galleryMoreWrap" hidden>
+          <button type="button" class="btn btn-ghost load-more-btn" id="galleryMore">Muat lebih banyak</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="video">
+      <div class="container">
+        <div class="section-head">
+          <div class="label">Video</div>
+          <h2>Galeri Video</h2>
+          <p>Cuplikan kegiatan dan dokumentasi sekolah.</p>
+        </div>
+        <div class="grid-2" id="videos"></div>
+        <div class="load-more-wrap" id="videosMoreWrap" hidden>
+          <button type="button" class="btn btn-ghost load-more-btn" id="videosMore">Muat lebih banyak</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="kegiatan" style="background:#fff;">
+      <div class="container">
+        <div class="section-head">
+          <div class="label">Rutinitas</div>
+          <h2>Kegiatan Siswa</h2>
+          <p>Aktivitas harian dan mingguan yang membentuk kebiasaan baik.</p>
+        </div>
+        <div class="activity-list" id="activities"></div>
+      </div>
+    </section>
+
+    <section id="ppdb">
+      <div class="container">
+        <div class="ppdb-box">
+          <div>
+            <h2 id="ppdbYear">PPDB Tahun Ajaran 2026/2027</h2>
+            <p id="ppdbNote">Pendaftaran dibuka. Kuota terbatas. Hubungi admin WhatsApp untuk info lengkap.</p>
+            <ul id="ppdbReqs"></ul>
+            <div class="ppdb-actions">
+              <a class="btn btn-accent" id="waLink" href="https://wa.me/62895355357028" target="_blank" rel="noopener">Chat WhatsApp</a>
+              <a class="btn btn-ghost-light" href="#kontak">Kontak Sekolah</a>
+            </div>
+          </div>
+          <div style="text-align:center;">
+            <div style="font-size:3rem;margin-bottom:.5rem;">📝</div>
+            <p style="opacity:.9;">Siapkan berkas dan hubungi admin untuk jadwal observasi & wawancara.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="kontak" style="background:#fff;">
+      <div class="container">
+        <div class="section-head">
+          <div class="label">Hubungi Kami</div>
+          <h2>Kontak & Lokasi</h2>
+          <p>Silakan kunjungi atau hubungi sekretariat sekolah.</p>
+        </div>
+        <div class="contact-grid">
+          <div class="contact-card">
+            <h3>Informasi Kontak</h3>
+            <p id="schoolAddress">Jl. Manunggal RT.03/12, Tajur Halang, Kec. Tajurhalang, Kab. Bogor</p>
+            <a id="schoolEmail" href="mailto:darulistiqomahsdit@gmail.com">darulistiqomahsdit@gmail.com</a>
+            <a id="igLink" href="https://www.instagram.com/sdit_daarul_istiqomah/" target="_blank" rel="noopener">Instagram @sdit_daarul_istiqomah</a>
+            <p style="margin-top:1rem;">
+              
+            </p>
+          </div>
+          <div class="map-card">
+            <iframe id="mapFrame" title="Peta lokasi sekolah" loading="lazy"
+              referrerpolicy="no-referrer-when-downgrade"
+              src="https://www.google.com/maps?q=-6.4804,106.7577&z=16&output=embed"></iframe>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <div class="footer-grid">
+        <div>
+          <h4>SDIT Daarul Istiqomah</h4>
+          <p id="footerAddress">Jl. Manunggal RT.03/12, Tajur Halang, Kab. Bogor</p>
+          <p id="footerEmail">darulistiqomahsdit@gmail.com</p>
+        </div>
+        <div>
+          <h4>Menu</h4>
+          <p><a href="#program">Program</a></p>
+          <p><a href="#berita">Berita</a></p>
+          <p><a href="#galeri">Galeri</a></p>
+          <p><a href="#ppdb">PPDB</a></p>
+        </div>
+        <div>
+          <h4>Media</h4>
+          <p><a href="https://www.instagram.com/sdit_daarul_istiqomah/" target="_blank" rel="noopener">Instagram Utama</a></p>
+          <p><a href="https://www.instagram.com/sd_it_darul_istiqomah/" target="_blank" rel="noopener">Instagram Alternatif</a></p>
+          
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <span>© <span id="year"></span> SDIT Daarul Istiqomah. Semua hak dilindungi.</span>
+        <span class="powered">Powered by <a href="https://silverhawk.web.id" target="_blank" rel="noopener">silverhawk.web.id</a></span>
+      </div>
+    </div>
+  </footer>
+
+  <div class="lightbox" id="lightbox" role="dialog" aria-modal="true">
+    <button class="lightbox-close" type="button" aria-label="Tutup">×</button>
+    <img id="lightboxImg" alt="">
+  </div>
+  <div class="modal" id="videoModal" role="dialog" aria-modal="true">
+    <div class="modal-inner">
+      <button class="modal-close" type="button" aria-label="Tutup">×</button>
+      <iframe id="videoFrame" allow="autoplay; encrypted-media" allowfullscreen title="Video"></iframe>
+    </div>
+  </div>
+
+  <script>document.getElementById('year').textContent = new Date().getFullYear();</script>
+  <script src="js/config.js"></script>
+  <script src="js/app.js"></script>
+  <script src="js/lock.js"></script>
+</body>
+</html>

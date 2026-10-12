@@ -1,0 +1,360 @@
+/**
+ * SDIT Daarul Istiqomah — Google Apps Script API
+ * ------------------------------------------------
+ * Deploy sebagai Web App:
+ *   Execute as: Me
+ *   Who has access: Anyone
+ *
+ * Sheet:
+ *   1) site   — snapshot JSON penuh (SUMBER UTAMA)
+ *   2) media  — mirror daftar media
+ *
+ * Header site: key | json | updated_at
+ * Header media: id | url | type | source | shortcode | title | description | category | thumb | embedUrl | active | date | created_by
+ */
+
+var SHEET_SITE = 'site';
+var SHEET_MEDIA = 'media';
+var CACHE_SECONDS = 30;
+
+function doGet(e) {
+  return handleRequest(e, 'GET');
+}
+
+function doPost(e) {
+  return handleRequest(e, 'POST');
+}
+
+function handleRequest(e, method) {
+  try {
+    var action = (e.parameter && e.parameter.action) || 'getSite';
+    var body = {};
+    if (method === 'POST' && e.postData && e.postData.contents) {
+      body = JSON.parse(e.postData.contents);
+      if (body.action) action = body.action;
+    }
+
+    var token = PropertiesService.getScriptProperties().getProperty('API_TOKEN') || '';
+    var publicActions = { list: 1, getSite: 1, ping: 1, publish: 1, getEngagement: 1, like: 1, comment: 1 };
+    if (!publicActions[action]) {
+      var clientToken = (e.parameter && e.parameter.token) || body.token || '';
+      if (token && clientToken !== token) {
+        return json_({ ok: false, error: 'Unauthorized — token salah' });
+      }
+    }
+
+    if (action === 'ping') {
+      return json_({ ok: true, service: 'sdit-di', ts: new Date().toISOString() });
+    }
+    if (action === 'getSite') {
+      return json_({ ok: true, data: getSite_(), source: 'google-sheets', ts: new Date().toISOString() });
+    }
+    if (action === 'saveSite') {
+      return json_(saveSite_(body.data || body.site || body));
+    }
+    if (action === 'list') {
+      var site = getSite_();
+      var media = (site && site.media) ? site.media : listMedia_();
+      return json_({ ok: true, media: media, source: 'google-sheets' });
+    }
+    if (action === 'add') return json_(addMedia_(body.item || body));
+    if (action === 'update') return json_(updateMedia_(body.item || body));
+    if (action === 'delete') return json_(deleteMedia_(body.id || (e.parameter && e.parameter.id)));
+    if (action === 'publish') return json_({ ok: true, data: getSite_(), generatedAt: new Date().toISOString() });
+    if (action === 'getEngagement') {
+      return json_({ ok: true, stats: getEngagement_(body.targetType || (e.parameter && e.parameter.targetType), body.targetId || (e.parameter && e.parameter.targetId)) });
+    }
+    if (action === 'like') {
+      return json_(addLike_({
+        targetType: body.targetType || (e.parameter && e.parameter.targetType),
+        targetId: body.targetId || (e.parameter && e.parameter.targetId),
+        fingerprint: body.fingerprint || (e.parameter && e.parameter.fingerprint) || ''
+      }));
+    }
+    if (action === 'comment') {
+      return json_(addComment_({
+        targetType: body.targetType || (e.parameter && e.parameter.targetType),
+        targetId: body.targetId || (e.parameter && e.parameter.targetId),
+        author: body.author || (e.parameter && e.parameter.author) || 'Anonim',
+        message: body.message || (e.parameter && e.parameter.message) || '',
+        fingerprint: body.fingerprint || (e.parameter && e.parameter.fingerprint) || ''
+      }));
+    }
+
+    return json_({ ok: false, error: 'Unknown action: ' + action });
+  } catch (err) {
+    return json_({ ok: false, error: String(err.message || err) });
+  }
+}
+
+function getSite_() {
+  var cache = CacheService.getScriptCache();
+  var cached = cache.get('site_json');
+  if (cached) {
+    try { return JSON.parse(cached); } catch (e) {}
+  }
+
+  var sheet = getSheet_(SHEET_SITE);
+  ensureSiteHeaders_(sheet);
+  var values = sheet.getDataRange().getValues();
+  for (var i = 1; i < values.length; i++) {
+    if (String(values[i][0]) === 'site' && values[i][1]) {
+      try {
+        var data = JSON.parse(String(values[i][1]));
+        cache.put('site_json', JSON.stringify(data), CACHE_SECONDS);
+        return data;
+      } catch (e) {
+        return null;
+      }
+    }
+  }
+  return null;
+}
+
+function saveSite_(data) {
+  if (!data || typeof data !== 'object') {
+    return { ok: false, error: 'data site wajib (object JSON)' };
+  }
+  if (!data.media) data.media = [];
+  if (!data.carousel) data.carousel = [];
+  if (!data.articles) data.articles = [];
+  if (!data.gallery) data.gallery = [];
+  if (!data.videos) data.videos = [];
+
+  var sheet = getSheet_(SHEET_SITE);
+  ensureSiteHeaders_(sheet);
+  var values = sheet.getDataRange().getValues();
+  var jsonStr = JSON.stringify(data);
+  var now = new Date().toISOString();
+  var found = false;
+  for (var i = 1; i < values.length; i++) {
+    if (String(values[i][0]) === 'site') {
+      sheet.getRange(i + 1, 2).setValue(jsonStr);
+      sheet.getRange(i + 1, 3).setValue(now);
+      found = true;
+      break;
+    }
+  }
+  if (!found) {
+    sheet.appendRow(['site', jsonStr, now]);
+  }
+
+  try { syncMediaSheet_(data.media || []); } catch (e) {}
+
+  CacheService.getScriptCache().remove('site_json');
+  CacheService.getScriptCache().remove('media_list');
+
+  return {
+    ok: true,
+    updatedAt: now,
+    counts: {
+      media: (data.media || []).length,
+      carousel: (data.carousel || []).length,
+      articles: (data.articles || []).length,
+      gallery: (data.gallery || []).length,
+      videos: (data.videos || []).length
+    }
+  };
+}
+
+function ensureSiteHeaders_(sheet) {
+  if (sheet.getLastRow() === 0) {
+    sheet.appendRow(['key', 'json', 'updated_at']);
+  }
+}
+
+function syncMediaSheet_(mediaList) {
+  var sheet = getSheet_(SHEET_MEDIA);
+  ensureHeaders_(sheet);
+  var last = sheet.getLastRow();
+  if (last > 1) sheet.getRange(2, 1, last, 13).clearContent();
+  if (!mediaList || !mediaList.length) return;
+  var rows = mediaList.map(function (item) {
+    return [
+      item.id || '',
+      item.url || '',
+      item.type || 'foto',
+      item.source || '',
+      item.shortcode || '',
+      item.title || '',
+      item.description || '',
+      item.category || '',
+      item.thumb || '',
+      item.embedUrl || '',
+      item.active !== false ? 'TRUE' : 'FALSE',
+      item.date || '',
+      item.created_by || ''
+    ];
+  });
+  if (rows.length) {
+    sheet.getRange(2, 1, 1 + rows.length, 13).setValues(rows);
+  }
+}
+
+function listMedia_() {
+  var cache = CacheService.getScriptCache();
+  var cached = cache.get('media_list');
+  if (cached) return JSON.parse(cached);
+
+  var sheet = getSheet_(SHEET_MEDIA);
+  ensureHeaders_(sheet);
+  var values = sheet.getDataRange().getValues();
+  if (values.length < 2) return [];
+
+  var headers = values[0].map(String);
+  var rows = [];
+  for (var i = 1; i < values.length; i++) {
+    var row = values[i];
+    if (!row[0]) continue;
+    var obj = {};
+    for (var j = 0; j < headers.length; j++) {
+      obj[headers[j]] = row[j];
+    }
+    obj.active = String(obj.active).toUpperCase() !== 'FALSE' && obj.active !== false && obj.active !== 0;
+    rows.push(obj);
+  }
+  cache.put('media_list', JSON.stringify(rows), CACHE_SECONDS);
+  return rows;
+}
+
+function addMedia_(item) {
+  if (!item || !item.url) return { ok: false, error: 'url wajib' };
+  var site = getSite_() || { media: [] };
+  if (!site.media) site.media = [];
+  item.id = item.id || ('m' + new Date().getTime());
+  site.media.unshift(item);
+  return saveSite_(site);
+}
+
+function updateMedia_(item) {
+  if (!item || !item.id) return { ok: false, error: 'id wajib' };
+  var site = getSite_() || { media: [] };
+  var list = site.media || [];
+  var found = false;
+  for (var i = 0; i < list.length; i++) {
+    if (String(list[i].id) === String(item.id)) {
+      for (var k in item) {
+        if (item.hasOwnProperty(k)) list[i][k] = item[k];
+      }
+      found = true;
+      break;
+    }
+  }
+  if (!found) return { ok: false, error: 'id tidak ditemukan' };
+  site.media = list;
+  return saveSite_(site);
+}
+
+function deleteMedia_(id) {
+  if (!id) return { ok: false, error: 'id wajib' };
+  var site = getSite_() || { media: [] };
+  var before = (site.media || []).length;
+  site.media = (site.media || []).filter(function (m) {
+    return String(m.id) !== String(id);
+  });
+  if (site.media.length === before) return { ok: false, error: 'id tidak ditemukan' };
+  return saveSite_(site);
+}
+
+function getSheet_(name) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName(name);
+  if (!sheet) sheet = ss.insertSheet(name);
+  return sheet;
+}
+
+function ensureHeaders_(sheet) {
+  if (sheet.getLastRow() === 0) {
+    sheet.appendRow([
+      'id', 'url', 'type', 'source', 'shortcode', 'title', 'description',
+      'category', 'thumb', 'embedUrl', 'active', 'date', 'created_by'
+    ]);
+  }
+}
+
+function json_(obj) {
+  return ContentService
+    .createTextOutput(JSON.stringify(obj))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+
+
+/* ========== ENGAGEMENT (like + comment) ========== */
+var SHEET_ENGAGE = 'engagement';
+
+function ensureEngageHeaders_(sheet) {
+  if (sheet.getLastRow() === 0) {
+    sheet.appendRow(['id', 'targetType', 'targetId', 'kind', 'author', 'message', 'fingerprint', 'created_at']);
+  }
+}
+
+function getEngagement_(targetType, targetId) {
+  if (!targetType || !targetId) return { likes: 0, comments: [] };
+  var sheet = getSheet_(SHEET_ENGAGE);
+  ensureEngageHeaders_(sheet);
+  var values = sheet.getDataRange().getValues();
+  var likes = 0;
+  var comments = [];
+  var likedFp = {};
+  for (var i = 1; i < values.length; i++) {
+    var row = values[i];
+    if (String(row[1]) !== String(targetType) || String(row[2]) !== String(targetId)) continue;
+    var kind = String(row[3]);
+    if (kind === 'like') {
+      likes++;
+      if (row[6]) likedFp[String(row[6])] = true;
+    } else if (kind === 'comment') {
+      comments.push({
+        id: row[0],
+        author: row[4] || 'Anonim',
+        message: row[5] || '',
+        created_at: row[7] || ''
+      });
+    }
+  }
+  // newest first
+  comments = comments.reverse().slice(0, 50);
+  return { likes: likes, comments: comments };
+}
+
+function addLike_(body) {
+  var targetType = body.targetType;
+  var targetId = body.targetId;
+  var fp = body.fingerprint || '';
+  if (!targetType || !targetId) return { ok: false, error: 'target wajib' };
+  var sheet = getSheet_(SHEET_ENGAGE);
+  ensureEngageHeaders_(sheet);
+  // prevent duplicate like same fingerprint
+  if (fp) {
+    var values = sheet.getDataRange().getValues();
+    for (var i = 1; i < values.length; i++) {
+      if (String(values[i][1]) === String(targetType) && String(values[i][2]) === String(targetId)
+          && String(values[i][3]) === 'like' && String(values[i][6]) === String(fp)) {
+        return { ok: true, duplicate: true, stats: getEngagement_(targetType, targetId) };
+      }
+    }
+  }
+  var id = 'lk' + new Date().getTime();
+  sheet.appendRow([id, targetType, targetId, 'like', '', '', fp, new Date().toISOString()]);
+  return { ok: true, stats: getEngagement_(targetType, targetId) };
+}
+
+function addComment_(body) {
+  var targetType = body.targetType;
+  var targetId = body.targetId;
+  var message = (body.message || '').toString().trim();
+  var author = (body.author || 'Anonim').toString().trim().slice(0, 40);
+  if (!targetType || !targetId) return { ok: false, error: 'target wajib' };
+  if (!message || message.length < 2) return { ok: false, error: 'komentar terlalu pendek' };
+  if (message.length > 500) return { ok: false, error: 'komentar max 500 karakter' };
+  var sheet = getSheet_(SHEET_ENGAGE);
+  ensureEngageHeaders_(sheet);
+  var id = 'cm' + new Date().getTime();
+  sheet.appendRow([id, targetType, targetId, 'comment', author, message, body.fingerprint || '', new Date().toISOString()]);
+  return { ok: true, stats: getEngagement_(targetType, targetId) };
+}
+
+function setupToken() {
+  PropertiesService.getScriptProperties().setProperty('API_TOKEN', 'ganti-dengan-token-rahasia');
+}
