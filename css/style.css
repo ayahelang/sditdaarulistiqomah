@@ -937,3 +937,44 @@ body.admin-edit-armed [data-admin-edit]:hover {
   .ppdb-notif-bell { top: auto; bottom: 88px; right: 14px; }
   .ppdb-notif-panel { top: auto; bottom: 148px; right: 14px; }
 }
+
+
+/* Typewriter loading di area carousel */
+.carousel-loading {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background:
+    linear-gradient(105deg, rgba(8,76,55,.92) 0%, rgba(11,110,79,.78) 50%, rgba(26,31,44,.55) 100%),
+    #0B6E4F;
+  transition: opacity .45s ease, visibility .45s ease;
+}
+.carousel-loading.is-done {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+.carousel-loading .typewriter {
+  margin: 0;
+  padding: 0 1.25rem;
+  text-align: center;
+  font-size: clamp(1.55rem, 5.5vw, 2.75rem);
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: 0.04em;
+  text-shadow: 0 2px 16px rgba(0,0,0,.35);
+  font-family: "Segoe UI", "Georgia", "Times New Roman", serif;
+}
+.carousel-loading .tw-cursor {
+  display: inline-block;
+  margin-left: 2px;
+  color: var(--accent, #C9A227);
+  font-weight: 400;
+  animation: twBlink 0.85s step-end infinite;
+}
+@keyframes twBlink {
+  50% { opacity: 0; }
+}

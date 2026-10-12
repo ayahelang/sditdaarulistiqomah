@@ -112,12 +112,98 @@
     }
   }
 
+
+  /* ========== Typewriter loading (isi jeda carousel) ========== */
+  let __twTimer = null;
+  let __twAudioCtx = null;
+
+  function typewriterClickSound() {
+    try {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return;
+      if (!__twAudioCtx) __twAudioCtx = new AC();
+      const ctx = __twAudioCtx;
+      if (ctx.state === 'suspended') ctx.resume().catch(() => {});
+      const t0 = ctx.currentTime;
+      // bunyi ketukan mesin ketik singkat
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      const filter = ctx.createBiquadFilter();
+      osc.type = 'square';
+      osc.frequency.value = 780 + Math.random() * 220;
+      filter.type = 'bandpass';
+      filter.frequency.value = 1800;
+      filter.Q.value = 4;
+      gain.gain.setValueAtTime(0.0001, t0);
+      gain.gain.exponentialRampToValueAtTime(0.045, t0 + 0.004);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.045);
+      osc.connect(filter);
+      filter.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(t0);
+      osc.stop(t0 + 0.05);
+    } catch (_) {}
+  }
+
+  function startCarouselTypewriter(text) {
+    const wrap = document.getElementById('carouselLoading');
+    const textEl = wrap && wrap.querySelector('.tw-text');
+    if (!wrap || !textEl) return;
+    const full = text || "Assalaamu'alaykum";
+    let i = 0;
+    textEl.textContent = '';
+    wrap.classList.remove('is-done');
+    wrap.setAttribute('aria-busy', 'true');
+    if (__twTimer) clearInterval(__twTimer);
+
+    // Mulai setelah interaksi/auto — browser sering blokir audio sampai gesture;
+    // tetap coba bunyi; jika diblok, teks tetap jalan.
+    __twTimer = setInterval(() => {
+      if (i >= full.length) {
+        clearInterval(__twTimer);
+        __twTimer = null;
+        // jeda di akhir kalimat, biarkan cursor kedip sampai carousel siap
+        return;
+      }
+      textEl.textContent += full.charAt(i);
+      i += 1;
+      typewriterClickSound();
+    }, 95);
+  }
+
+  function finishCarouselTypewriter() {
+    if (__twTimer) {
+      clearInterval(__twTimer);
+      __twTimer = null;
+    }
+    const wrap = document.getElementById('carouselLoading');
+    if (!wrap) return;
+    // pastikan teks lengkap sebentar sebelum fade out
+    const textEl = wrap.querySelector('.tw-text');
+    if (textEl && !textEl.textContent) {
+      textEl.textContent = "Assalaamu'alaykum";
+    }
+    wrap.setAttribute('aria-busy', 'false');
+    wrap.classList.add('is-done');
+    setTimeout(() => {
+      try { wrap.remove(); } catch (_) {}
+    }, 500);
+  }
+
   function renderCarousel(items) {
     const track = document.getElementById('carousel');
     const dots = document.getElementById('carouselDots');
-    if (!track || !items?.length) return;
-    track.innerHTML = '';
-    dots.innerHTML = '';
+    if (!track || !items?.length) {
+      finishCarouselTypewriter();
+      return;
+    }
+    // Jangan hapus loading dulu agar tidak flicker; slide ditambah, loading di-fade
+    const loading = document.getElementById('carouselLoading');
+    // clear slides except loading overlay
+    [...track.children].forEach((ch) => {
+      if (ch.id !== 'carouselLoading') ch.remove();
+    });
+    if (dots) dots.innerHTML = '';
     const active = items.filter((i) => i.active !== false);
     active.forEach((item, idx) => {
       const slide = el('div', {
@@ -152,6 +238,8 @@
       dotEls().forEach((x, i) => x.classList.toggle('active', i === current));
     }
     setInterval(() => go(current + 1), 6000);
+    // Biarkan salam sempat terbaca, lalu fade → carousel
+    setTimeout(() => finishCarouselTypewriter(), 450);
   }
 
   function renderStats(stats) {
@@ -1116,6 +1204,19 @@
   }
 
   async function init() {
+    startCarouselTypewriter("Assalaamu'alaykum");
+    // Unlock audio on first user gesture (kebijakan browser)
+    const unlock = () => {
+      try {
+        if (__twAudioCtx && __twAudioCtx.state === 'suspended') __twAudioCtx.resume();
+        typewriterClickSound();
+      } catch (_) {}
+      document.removeEventListener('pointerdown', unlock);
+      document.removeEventListener('keydown', unlock);
+    };
+    document.addEventListener('pointerdown', unlock, { once: true });
+    document.addEventListener('keydown', unlock, { once: true });
+
     setupNav();
     setupSecretAdminEntry();
     setupQuickAdminEdit();
@@ -1148,6 +1249,7 @@
       console.error(err);
       const h = document.getElementById('schoolName');
       if (h) h.textContent = 'SDIT Daarul Istiqomah';
+      finishCarouselTypewriter();
       setupPpdbForm();
       setupPpdbNotifBell();
     }

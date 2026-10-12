@@ -68,7 +68,11 @@
     <!-- Pengumuman dinamis -->
     <div id="annRoot" aria-live="polite"></div>
     <section class="hero" id="beranda">
-      <div class="carousel" id="carousel" aria-label="Carousel"></div>
+      <div class="carousel" id="carousel" aria-label="Carousel">
+        <div class="carousel-loading" id="carouselLoading" aria-live="polite" aria-busy="true">
+          <p class="typewriter" id="typewriterText"><span class="tw-text"></span><span class="tw-cursor" aria-hidden="true">|</span></p>
+        </div>
+      </div>
       <div class="carousel-nav" id="carouselDots"></div>
     </section>
 
