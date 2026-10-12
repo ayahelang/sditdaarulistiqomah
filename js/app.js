@@ -729,6 +729,40 @@
 
     const statusEl = document.getElementById('ppdbFormStatus');
     const submitBtn = document.getElementById('ppdbSubmitBtn');
+    const formWrap = document.getElementById('ppdbForm');
+    const btnShow = document.getElementById('btnShowPpdbForm');
+    const btnHide = document.getElementById('btnHidePpdbForm');
+
+    function showPpdbForm() {
+      if (!formWrap) return;
+      formWrap.hidden = false;
+      formWrap.classList.remove('is-hidden');
+      formWrap.classList.add('is-visible');
+      formWrap.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      if (btnShow) btnShow.setAttribute('aria-expanded', 'true');
+    }
+    function hidePpdbForm() {
+      if (!formWrap) return;
+      formWrap.hidden = true;
+      formWrap.classList.add('is-hidden');
+      formWrap.classList.remove('is-visible');
+      if (btnShow) {
+        btnShow.setAttribute('aria-expanded', 'false');
+        btnShow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }
+    if (btnShow && !btnShow.dataset.bound) {
+      btnShow.dataset.bound = '1';
+      btnShow.setAttribute('aria-expanded', 'false');
+      btnShow.setAttribute('aria-controls', 'ppdbForm');
+      btnShow.addEventListener('click', showPpdbForm);
+    }
+    if (btnHide && !btnHide.dataset.bound) {
+      btnHide.dataset.bound = '1';
+      btnHide.addEventListener('click', hidePpdbForm);
+    }
+    // Deep-link #ppdbForm tetap bisa buka form
+    if (location.hash === '#ppdbForm') showPpdbForm();
 
     function showStatus(msg, type) {
       if (!statusEl) return;

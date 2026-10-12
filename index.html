@@ -151,7 +151,7 @@
             <p id="ppdbNote">Pendaftaran online dibuka. Isi formulir di bawah ini. Data siap diekspor untuk Dapodik &amp; aplikasi PPDB.</p>
             <ul id="ppdbReqs"></ul>
             <div class="ppdb-actions">
-              <a class="btn btn-accent" href="#ppdbForm">Isi Formulir Online</a>
+              <button type="button" class="btn btn-accent" id="btnShowPpdbForm">Isi Formulir Online</button>
               <a class="btn btn-ghost-light" id="waLink" href="https://wa.me/62895355357028" target="_blank" rel="noopener">Chat WhatsApp</a>
               <a class="btn btn-ghost-light" href="#kontak">Kontak Sekolah</a>
             </div>
@@ -163,11 +163,12 @@
         </div>
 
         <!-- Formulir PPDB Online — field selaras Dapodik -->
-        <div class="ppdb-form-wrap" id="ppdbForm">
+        <div class="ppdb-form-wrap is-hidden" id="ppdbForm" hidden>
           <div class="section-head" style="margin-top:2.5rem;">
             <div class="label">Formulir Online</div>
             <h2>Pendaftaran Peserta Didik Baru</h2>
             <p>Data di bawah mengikuti struktur standar Dapodik agar mudah diimpor ke aplikasi PPDB sekolah. Tanda <span class="req">*</span> wajib diisi.</p>
+            <p style="margin-top:.5rem"><button type="button" class="btn btn-ghost" id="btnHidePpdbForm">Tutup formulir</button></p>
           </div>
 
           <form id="ppdbRegistrationForm" class="ppdb-form" novalidate>
