@@ -291,6 +291,51 @@
     .ppdb-modal-grid label { margin:0; }
     .ppdb-modal-grid .full { grid-column:1/-1; }
     .ppdb-count { font-size:.85rem; color:var(--muted); font-weight:600; }
+
+    /* Horizontal tabs */
+    .admin-tabs-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: .35rem;
+      padding: .35rem;
+      margin: 0 0 1rem;
+      background: #fff;
+      border-radius: 14px;
+      border: 1px solid rgba(11,110,79,.1);
+      box-shadow: 0 4px 16px rgba(8,76,55,.06);
+      position: sticky;
+      top: 0;
+      z-index: 50;
+    }
+    .admin-tab {
+      border: none;
+      background: transparent;
+      color: var(--muted, #5B6575);
+      font-weight: 700;
+      font-size: .82rem;
+      padding: .55rem .85rem;
+      border-radius: 10px;
+      cursor: pointer;
+      font-family: inherit;
+      white-space: nowrap;
+      transition: background .15s, color .15s;
+    }
+    .admin-tab:hover { background: #f0f7f3; color: #084C37; }
+    .admin-tab.active {
+      background: #0B6E4F;
+      color: #fff;
+      box-shadow: 0 4px 12px rgba(11,110,79,.25);
+    }
+    .admin-tab-panel { display: none; }
+    .admin-tab-panel.active { display: block; animation: tabIn .2s ease; }
+    @keyframes tabIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: none; }
+    }
+    @media (max-width: 640px) {
+      .admin-tabs-bar { gap: .25rem; padding: .3rem; }
+      .admin-tab { font-size: .75rem; padding: .45rem .6rem; }
+    }
   </style>
   <link rel="stylesheet" href="../css/lock.css">
 </head>
@@ -315,8 +360,7 @@
   <div id="adminApp" class="locked">
   <div class="status-bar" id="status">Memuat…</div>
 
-  <div class="admin-wrap">
-    <div class="admin-card">
+  <div class="admin-wrap"><div class="admin-card">
       <h1>Panel Admin</h1>
       <p class="hint">SDIT Daarul Istiqomah — kelola profil, berita, dan media dari link Instagram/Facebook.</p>
       <div class="actions">
@@ -332,7 +376,50 @@
       <p class="hint" id="sheetsHint">Google Sheets: belum dikonfigurasi. Isi <code>js/config.js</code> — lihat <code>apps-script/SETUP.md</code>.</p>
     </div>
 
-    <div class="admin-card">
+
+    <nav class="admin-tabs-bar" id="adminTabs" role="tablist" aria-label="Menu panel admin">
+      <button type="button" class="admin-tab active" role="tab" data-tab="profil" aria-selected="true">Profil</button>
+      <button type="button" class="admin-tab" role="tab" data-tab="media" aria-selected="false">Media</button>
+      <button type="button" class="admin-tab" role="tab" data-tab="pengumuman" aria-selected="false">Pengumuman</button>
+      <button type="button" class="admin-tab" role="tab" data-tab="carousel" aria-selected="false">Carousel</button>
+      <button type="button" class="admin-tab" role="tab" data-tab="berita" aria-selected="false">Berita</button>
+      <button type="button" class="admin-tab" role="tab" data-tab="video" aria-selected="false">Video</button>
+      <button type="button" class="admin-tab" role="tab" data-tab="galeri" aria-selected="false">Galeri</button>
+      <button type="button" class="admin-tab" role="tab" data-tab="ppdb" aria-selected="false">PPDB</button>
+      <button type="button" class="admin-tab" role="tab" data-tab="setup" aria-selected="false">Setup</button>
+    </nav>
+
+
+<div class="admin-tab-panel active" id="tab-profil" role="tabpanel" data-tab-panel="profil">
+<div class="admin-card">
+      <h2>Profil Sekolah</h2>
+      <div class="row">
+        <div>
+          <label>Nama sekolah</label>
+          <input id="fName" type="text">
+        </div>
+        <div>
+          <label>Tagline</label>
+          <input id="fTagline" type="text">
+        </div>
+      </div>
+      <label>Alamat</label>
+      <input id="fAddress" type="text">
+      <div class="row">
+        <div>
+          <label>Email</label>
+          <input id="fEmail" type="email">
+        </div>
+        <div>
+          <label>WhatsApp (62…)</label>
+          <input id="fWa" type="text">
+        </div>
+      </div>
+    </div>
+</div><!-- /tab-profil -->
+
+<div class="admin-tab-panel" id="tab-media" role="tabpanel" data-tab-panel="media">
+<div class="admin-card">
       <h2>➕ Tambah Media dari IG / FB / YouTube / TikTok / X</h2>
       <p class="hint">
         Paste link Instagram, Facebook, YouTube, TikTok, X/Twitter, atau URL gambar/thumbnail (hotlink).
@@ -365,41 +452,15 @@
         </div>
       </div>
     </div>
-
-    <div class="admin-card">
+<div class="admin-card">
       <h2>Media (Foto & Video)</h2>
       <div class="list" id="mediaList"></div>
       <p class="hint">Item <span class="badge video">video</span> → section Video. <span class="badge foto">foto</span> → Galeri Foto.</p>
     </div>
+</div><!-- /tab-media -->
 
-    <div class="admin-card">
-      <h2>Profil Sekolah</h2>
-      <div class="row">
-        <div>
-          <label>Nama sekolah</label>
-          <input id="fName" type="text">
-        </div>
-        <div>
-          <label>Tagline</label>
-          <input id="fTagline" type="text">
-        </div>
-      </div>
-      <label>Alamat</label>
-      <input id="fAddress" type="text">
-      <div class="row">
-        <div>
-          <label>Email</label>
-          <input id="fEmail" type="email">
-        </div>
-        <div>
-          <label>WhatsApp (62…)</label>
-          <input id="fWa" type="text">
-        </div>
-      </div>
-    </div>
-
-
-    <div class="admin-card">
+<div class="admin-tab-panel" id="tab-pengumuman" role="tabpanel" data-tab-panel="pengumuman">
+<div class="admin-card">
       <h2>📢 Pengumuman</h2>
       <p class="hint">
         Tampil di halaman publik sebagai <strong>popup</strong>, banner atas/bawah, atau float.
@@ -499,41 +560,50 @@
         </div>
       </div>
     </div>
+</div><!-- /tab-pengumuman -->
 
-    <div class="admin-card">
+<div class="admin-tab-panel" id="tab-carousel" role="tabpanel" data-tab-panel="carousel">
+<div class="admin-card">
       <h2>Carousel</h2>
       <div class="list" id="carouselList"></div>
       <div class="actions">
         <button class="btn btn-primary" type="button" id="btnAddCarousel" data-tip="Tambah slide baru di carousel beranda. Anda akan mengisi judul, subtitle, gambar, dan tombol CTA lewat form Edit.">+ Tambah Slide</button>
       </div>
     </div>
+</div><!-- /tab-carousel -->
 
-    <div class="admin-card">
+<div class="admin-tab-panel" id="tab-berita" role="tabpanel" data-tab-panel="berita">
+<div class="admin-card">
       <h2>Artikel / Berita</h2>
       <div class="list" id="articleList"></div>
       <div class="actions">
         <button class="btn btn-primary" type="button" id="btnAddArticle" data-tip="Tambah berita/artikel baru. Isi judul, kategori, tanggal, ringkasan, dan gambar lewat form yang muncul.">+ Tambah Artikel</button>
       </div>
     </div>
+</div><!-- /tab-berita -->
 
-    
-    <div class="admin-card">
+<div class="admin-tab-panel" id="tab-video" role="tabpanel" data-tab-panel="video">
+<div class="admin-card">
       <h2>Video (YouTube)</h2>
       <div class="list" id="videoList"></div>
       <div class="actions">
         <button class="btn btn-primary" type="button" id="btnAddVideo" data-tip="Tambah video YouTube ke section Video. Isi judul, YouTube ID (kode setelah v=), dan URL thumbnail.">+ Tambah Video</button>
       </div>
     </div>
+</div><!-- /tab-video -->
 
-    <div class="admin-card">
+<div class="admin-tab-panel" id="tab-galeri" role="tabpanel" data-tab-panel="galeri">
+<div class="admin-card">
       <h2>Galeri Foto (URL langsung)</h2>
       <div class="list" id="galleryList"></div>
       <div class="actions">
         <button class="btn btn-primary" type="button" id="btnAddGallery" data-tip="Tambah foto ke galeri dengan URL/path gambar langsung (bukan link post IG). Untuk link IG, gunakan form Tambah Media di atas.">+ Tambah Foto (URL gambar)</button>
       </div>
     </div>
+</div><!-- /tab-galeri -->
 
-    <div class="admin-card">
+<div class="admin-tab-panel" id="tab-ppdb" role="tabpanel" data-tab-panel="ppdb">
+<div class="admin-card">
       <h2>PPDB</h2>
       <div class="row">
         <div>
@@ -551,9 +621,7 @@
       <label>Catatan PPDB</label>
       <textarea id="fPpdbNote"></textarea>
     </div>
-
-
-    <div class="admin-card" id="ppdbDataCard">
+<div class="admin-card" id="ppdbDataCard">
       <h2>📋 Data Pendaftaran PPDB</h2>
       <p class="hint">
         Daftar calon siswa dari formulir online. Data disimpan di sheet <code>ppdb</code> (Google Sheets).
@@ -594,15 +662,18 @@
         </table>
       </div>
     </div>
+</div><!-- /tab-ppdb -->
 
-    <div class="admin-card">
+<div class="admin-tab-panel" id="tab-setup" role="tabpanel" data-tab-panel="setup">
+<div class="admin-card">
       <h2>Setup database</h2>
       <p class="hint">
         <strong>Google Sheets + Apps Script</strong> — ikuti <code>apps-script/SETUP.md</code>.
         Multi-guru: share Spreadsheet (Editor). Token di <code>js/config.js</code>.
       </p>
     </div>
-  </div>
+</div><!-- /tab-setup -->
+</div>
 
   </div><!-- /adminApp -->
 

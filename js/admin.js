@@ -1424,10 +1424,47 @@
 
   // Deep-link from frontend quick-edit: admin/?edit=carousel:0
 
+
+  /* ========== Admin horizontal tabs ========== */
+  function setupAdminTabs() {
+    const bar = document.getElementById('adminTabs');
+    if (!bar) return;
+
+    function activate(tabId) {
+      if (!tabId) return;
+      bar.querySelectorAll('.admin-tab').forEach((btn) => {
+        const on = btn.getAttribute('data-tab') === tabId;
+        btn.classList.toggle('active', on);
+        btn.setAttribute('aria-selected', on ? 'true' : 'false');
+      });
+      document.querySelectorAll('.admin-tab-panel').forEach((panel) => {
+        const on = panel.getAttribute('data-tab-panel') === tabId;
+        panel.classList.toggle('active', on);
+      });
+      try {
+        const u = new URL(location.href);
+        u.searchParams.set('tab', tabId);
+        history.replaceState({}, '', u.pathname + u.search + u.hash);
+      } catch (_) {}
+    }
+
+    bar.querySelectorAll('.admin-tab').forEach((btn) => {
+      btn.addEventListener('click', () => activate(btn.getAttribute('data-tab')));
+    });
+
+    // deep link ?tab=ppdb or ?focus=ppdb
+    const params = new URLSearchParams(location.search);
+    const initial = params.get('tab') || (params.get('focus') === 'ppdb' ? 'ppdb' : null);
+    if (initial) activate(initial);
+
+    window.__adminActivateTab = activate;
+  }
+
   function focusPpdbSectionIfNeeded() {
     const params = new URLSearchParams(location.search);
     const need = params.get('focus') === 'ppdb' || sessionStorage.getItem('sdit_di_ppdb_focus') === '1';
     if (!need) return;
+    if (typeof window.__adminActivateTab === 'function') window.__adminActivateTab('ppdb');
     const card = document.getElementById('ppdbDataCard');
     if (card) {
       setTimeout(() => {
