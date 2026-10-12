@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>SDIT Daarul Istiqomah — Membentuk Generasi Qurani</title>
-  <meta name="description" content="Website resmi SDIT Daarul Istiqomah Tajurhalang, Bogor. Sekolah Dasar Islam Terpadu, Akreditasi A.">
+  <meta name="description" content="Website resmi SDIT Daarul Istiqomah (sditdaarulistiqomah.sch.id) Tajurhalang, Bogor. Sekolah Dasar Islam Terpadu, Akreditasi A. PPDB online.">
   <meta name="theme-color" content="#0B6E4F">
   <link rel="icon" href="images/logo.jpg" type="image/jpeg">
   <link rel="stylesheet" href="css/style.css">
@@ -12,7 +12,7 @@
 </head>
 <body
   data-shlock-mode="ultimate"
-  data-shlock-domain="darulistiqomah.silverhawk.web.id,localhost,127.0.0.1"
+  data-shlock-domain="sditdaarulistiqomah.sch.id,sditdaarulistiqomah.web.id,darulistiqomah.silverhawk.web.id,localhost,127.0.0.1"
   data-shlock-brand="SDIT Daarul Istiqomah"
   data-shlock-social="https://www.instagram.com/sdit_daarul_istiqomah/"
 >
@@ -148,17 +148,343 @@
         <div class="ppdb-box">
           <div>
             <h2 id="ppdbYear">PPDB Tahun Ajaran 2026/2027</h2>
-            <p id="ppdbNote">Pendaftaran dibuka. Kuota terbatas. Hubungi admin WhatsApp untuk info lengkap.</p>
+            <p id="ppdbNote">Pendaftaran online dibuka. Isi formulir di bawah ini. Data siap diekspor untuk Dapodik &amp; aplikasi PPDB.</p>
             <ul id="ppdbReqs"></ul>
             <div class="ppdb-actions">
-              <a class="btn btn-accent" id="waLink" href="https://wa.me/62895355357028" target="_blank" rel="noopener">Chat WhatsApp</a>
+              <a class="btn btn-accent" href="#ppdbForm">Isi Formulir Online</a>
+              <a class="btn btn-ghost-light" id="waLink" href="https://wa.me/62895355357028" target="_blank" rel="noopener">Chat WhatsApp</a>
               <a class="btn btn-ghost-light" href="#kontak">Kontak Sekolah</a>
             </div>
           </div>
           <div style="text-align:center;">
             <div style="font-size:3rem;margin-bottom:.5rem;">📝</div>
-            <p style="opacity:.9;">Siapkan berkas dan hubungi admin untuk jadwal observasi & wawancara.</p>
+            <p style="opacity:.9;">Siapkan berkas (Akta, KK, KTP) dan lengkapi formulir. Observasi &amp; wawancara dijadwalkan oleh panitia.</p>
           </div>
+        </div>
+
+        <!-- Formulir PPDB Online — field selaras Dapodik -->
+        <div class="ppdb-form-wrap" id="ppdbForm">
+          <div class="section-head" style="margin-top:2.5rem;">
+            <div class="label">Formulir Online</div>
+            <h2>Pendaftaran Peserta Didik Baru</h2>
+            <p>Data di bawah mengikuti struktur standar Dapodik agar mudah diimpor ke aplikasi PPDB sekolah. Tanda <span class="req">*</span> wajib diisi.</p>
+          </div>
+
+          <form id="ppdbRegistrationForm" class="ppdb-form" novalidate>
+            <input type="hidden" name="tahun_ajaran" value="2026/2027">
+            <input type="hidden" name="jenjang" value="SD">
+            <input type="hidden" name="sekolah" value="SDIT Daarul Istiqomah">
+            <input type="hidden" name="npsn" value="70045471">
+
+            <!-- DATA SISWA -->
+            <fieldset class="ppdb-fieldset">
+              <legend>1. Data Calon Siswa</legend>
+              <div class="form-grid">
+                <div class="form-group full">
+                  <label for="nama_lengkap">Nama Lengkap <span class="req">*</span></label>
+                  <input type="text" id="nama_lengkap" name="nama_lengkap" required maxlength="100" autocomplete="name" placeholder="Sesuai Akta Kelahiran">
+                </div>
+                <div class="form-group">
+                  <label for="nik">NIK Siswa <span class="req">*</span></label>
+                  <input type="text" id="nik" name="nik" required pattern="[0-9]{16}" maxlength="16" inputmode="numeric" placeholder="16 digit NIK">
+                </div>
+                <div class="form-group">
+                  <label for="nisn">NISN <span class="opt">(jika ada)</span></label>
+                  <input type="text" id="nisn" name="nisn" pattern="[0-9]{10}" maxlength="10" inputmode="numeric" placeholder="10 digit NISN">
+                </div>
+                <div class="form-group">
+                  <label for="no_akta_lahir">No. Akta Kelahiran</label>
+                  <input type="text" id="no_akta_lahir" name="no_akta_lahir" maxlength="50" placeholder="Nomor akta">
+                </div>
+                <div class="form-group">
+                  <label for="tempat_lahir">Tempat Lahir <span class="req">*</span></label>
+                  <input type="text" id="tempat_lahir" name="tempat_lahir" required maxlength="50" placeholder="Kota/Kabupaten">
+                </div>
+                <div class="form-group">
+                  <label for="tanggal_lahir">Tanggal Lahir <span class="req">*</span></label>
+                  <input type="date" id="tanggal_lahir" name="tanggal_lahir" required>
+                </div>
+                <div class="form-group">
+                  <label for="jenis_kelamin">Jenis Kelamin <span class="req">*</span></label>
+                  <select id="jenis_kelamin" name="jenis_kelamin" required>
+                    <option value="">— Pilih —</option>
+                    <option value="L">Laki-laki</option>
+                    <option value="P">Perempuan</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="agama">Agama <span class="req">*</span></label>
+                  <select id="agama" name="agama" required>
+                    <option value="">— Pilih —</option>
+                    <option value="Islam" selected>Islam</option>
+                    <option value="Kristen">Kristen</option>
+                    <option value="Katolik">Katolik</option>
+                    <option value="Hindu">Hindu</option>
+                    <option value="Buddha">Buddha</option>
+                    <option value="Konghucu">Konghucu</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="kewarganegaraan">Kewarganegaraan</label>
+                  <select id="kewarganegaraan" name="kewarganegaraan">
+                    <option value="WNI" selected>WNI</option>
+                    <option value="WNA">WNA</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="anak_ke">Anak ke-</label>
+                  <input type="number" id="anak_ke" name="anak_ke" min="1" max="20" placeholder="1">
+                </div>
+                <div class="form-group">
+                  <label for="jumlah_saudara">Jumlah Saudara Kandung</label>
+                  <input type="number" id="jumlah_saudara" name="jumlah_saudara" min="0" max="20" placeholder="0">
+                </div>
+                <div class="form-group">
+                  <label for="kebutuhan_khusus">Berkebutuhan Khusus</label>
+                  <select id="kebutuhan_khusus" name="kebutuhan_khusus">
+                    <option value="Tidak" selected>Tidak</option>
+                    <option value="Ya">Ya (sebutkan di catatan)</option>
+                  </select>
+                </div>
+              </div>
+            </fieldset>
+
+            <!-- ALAMAT -->
+            <fieldset class="ppdb-fieldset">
+              <legend>2. Alamat Tempat Tinggal</legend>
+              <div class="form-grid">
+                <div class="form-group full">
+                  <label for="alamat_jalan">Alamat Jalan / Dusun <span class="req">*</span></label>
+                  <input type="text" id="alamat_jalan" name="alamat_jalan" required maxlength="200" placeholder="Jl. ... RT/RW akan diisi terpisah">
+                </div>
+                <div class="form-group">
+                  <label for="rt">RT</label>
+                  <input type="text" id="rt" name="rt" maxlength="3" inputmode="numeric" placeholder="001">
+                </div>
+                <div class="form-group">
+                  <label for="rw">RW</label>
+                  <input type="text" id="rw" name="rw" maxlength="3" inputmode="numeric" placeholder="001">
+                </div>
+                <div class="form-group">
+                  <label for="desa_kelurahan">Desa / Kelurahan <span class="req">*</span></label>
+                  <input type="text" id="desa_kelurahan" name="desa_kelurahan" required maxlength="60" placeholder="Nama desa/kelurahan">
+                </div>
+                <div class="form-group">
+                  <label for="kecamatan">Kecamatan <span class="req">*</span></label>
+                  <input type="text" id="kecamatan" name="kecamatan" required maxlength="60" placeholder="Kecamatan">
+                </div>
+                <div class="form-group">
+                  <label for="kabupaten_kota">Kabupaten / Kota <span class="req">*</span></label>
+                  <input type="text" id="kabupaten_kota" name="kabupaten_kota" required maxlength="60" placeholder="Kab. Bogor / Kota ...">
+                </div>
+                <div class="form-group">
+                  <label for="provinsi">Provinsi <span class="req">*</span></label>
+                  <input type="text" id="provinsi" name="provinsi" required maxlength="60" value="Jawa Barat">
+                </div>
+                <div class="form-group">
+                  <label for="kode_pos">Kode Pos</label>
+                  <input type="text" id="kode_pos" name="kode_pos" pattern="[0-9]{5}" maxlength="5" inputmode="numeric" placeholder="16320">
+                </div>
+                <div class="form-group">
+                  <label for="jarak_km">Jarak ke Sekolah (km)</label>
+                  <input type="number" id="jarak_km" name="jarak_km" min="0" max="100" step="0.1" placeholder="1.5">
+                </div>
+                <div class="form-group">
+                  <label for="transportasi">Alat Transportasi</label>
+                  <select id="transportasi" name="transportasi">
+                    <option value="">— Pilih —</option>
+                    <option value="Jalan kaki">Jalan kaki</option>
+                    <option value="Sepeda">Sepeda</option>
+                    <option value="Motor">Motor</option>
+                    <option value="Mobil pribadi">Mobil pribadi</option>
+                    <option value="Antar jemput sekolah">Antar jemput sekolah</option>
+                    <option value="Angkutan umum">Angkutan umum</option>
+                    <option value="Lainnya">Lainnya</option>
+                  </select>
+                </div>
+              </div>
+            </fieldset>
+
+            <!-- ASAL SEKOLAH -->
+            <fieldset class="ppdb-fieldset">
+              <legend>3. Asal Sekolah / Pendidikan Sebelumnya</legend>
+              <div class="form-grid">
+                <div class="form-group">
+                  <label for="asal_sekolah">Nama TK / PAUD / RA</label>
+                  <input type="text" id="asal_sekolah" name="asal_sekolah" maxlength="100" placeholder="Nama lembaga (jika ada)">
+                </div>
+                <div class="form-group">
+                  <label for="asal_sekolah_alamat">Alamat Asal Sekolah</label>
+                  <input type="text" id="asal_sekolah_alamat" name="asal_sekolah_alamat" maxlength="150" placeholder="Kota/Kabupaten">
+                </div>
+                <div class="form-group">
+                  <label for="tahun_lulus_asal">Tahun Lulus / Selesai</label>
+                  <input type="number" id="tahun_lulus_asal" name="tahun_lulus_asal" min="2018" max="2026" placeholder="2026">
+                </div>
+              </div>
+            </fieldset>
+
+            <!-- DATA AYAH -->
+            <fieldset class="ppdb-fieldset">
+              <legend>4. Data Ayah Kandung</legend>
+              <div class="form-grid">
+                <div class="form-group full">
+                  <label for="ayah_nama">Nama Ayah <span class="req">*</span></label>
+                  <input type="text" id="ayah_nama" name="ayah_nama" required maxlength="100" placeholder="Nama lengkap ayah">
+                </div>
+                <div class="form-group">
+                  <label for="ayah_nik">NIK Ayah</label>
+                  <input type="text" id="ayah_nik" name="ayah_nik" pattern="[0-9]{16}" maxlength="16" inputmode="numeric" placeholder="16 digit">
+                </div>
+                <div class="form-group">
+                  <label for="ayah_pendidikan">Pendidikan Terakhir</label>
+                  <select id="ayah_pendidikan" name="ayah_pendidikan">
+                    <option value="">— Pilih —</option>
+                    <option value="Tidak sekolah">Tidak sekolah</option>
+                    <option value="SD">SD / sederajat</option>
+                    <option value="SMP">SMP / sederajat</option>
+                    <option value="SMA">SMA / sederajat</option>
+                    <option value="D1">D1</option>
+                    <option value="D2">D2</option>
+                    <option value="D3">D3</option>
+                    <option value="S1">S1</option>
+                    <option value="S2">S2</option>
+                    <option value="S3">S3</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="ayah_pekerjaan">Pekerjaan</label>
+                  <input type="text" id="ayah_pekerjaan" name="ayah_pekerjaan" maxlength="60" placeholder="Contoh: Karyawan swasta">
+                </div>
+                <div class="form-group">
+                  <label for="ayah_penghasilan">Penghasilan Bulanan</label>
+                  <select id="ayah_penghasilan" name="ayah_penghasilan">
+                    <option value="">— Pilih —</option>
+                    <option value="< 1 juta">&lt; Rp 1.000.000</option>
+                    <option value="1-2 juta">Rp 1.000.000 – 2.000.000</option>
+                    <option value="2-3 juta">Rp 2.000.000 – 3.000.000</option>
+                    <option value="3-5 juta">Rp 3.000.000 – 5.000.000</option>
+                    <option value="> 5 juta">&gt; Rp 5.000.000</option>
+                    <option value="Tidak berpenghasilan">Tidak berpenghasilan</option>
+                  </select>
+                </div>
+              </div>
+            </fieldset>
+
+            <!-- DATA IBU -->
+            <fieldset class="ppdb-fieldset">
+              <legend>5. Data Ibu Kandung</legend>
+              <div class="form-grid">
+                <div class="form-group full">
+                  <label for="ibu_nama">Nama Ibu <span class="req">*</span></label>
+                  <input type="text" id="ibu_nama" name="ibu_nama" required maxlength="100" placeholder="Nama lengkap ibu">
+                </div>
+                <div class="form-group">
+                  <label for="ibu_nik">NIK Ibu</label>
+                  <input type="text" id="ibu_nik" name="ibu_nik" pattern="[0-9]{16}" maxlength="16" inputmode="numeric" placeholder="16 digit">
+                </div>
+                <div class="form-group">
+                  <label for="ibu_pendidikan">Pendidikan Terakhir</label>
+                  <select id="ibu_pendidikan" name="ibu_pendidikan">
+                    <option value="">— Pilih —</option>
+                    <option value="Tidak sekolah">Tidak sekolah</option>
+                    <option value="SD">SD / sederajat</option>
+                    <option value="SMP">SMP / sederajat</option>
+                    <option value="SMA">SMA / sederajat</option>
+                    <option value="D1">D1</option>
+                    <option value="D2">D2</option>
+                    <option value="D3">D3</option>
+                    <option value="S1">S1</option>
+                    <option value="S2">S2</option>
+                    <option value="S3">S3</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="ibu_pekerjaan">Pekerjaan</label>
+                  <input type="text" id="ibu_pekerjaan" name="ibu_pekerjaan" maxlength="60" placeholder="Contoh: Ibu rumah tangga">
+                </div>
+                <div class="form-group">
+                  <label for="ibu_penghasilan">Penghasilan Bulanan</label>
+                  <select id="ibu_penghasilan" name="ibu_penghasilan">
+                    <option value="">— Pilih —</option>
+                    <option value="< 1 juta">&lt; Rp 1.000.000</option>
+                    <option value="1-2 juta">Rp 1.000.000 – 2.000.000</option>
+                    <option value="2-3 juta">Rp 2.000.000 – 3.000.000</option>
+                    <option value="3-5 juta">Rp 3.000.000 – 5.000.000</option>
+                    <option value="> 5 juta">&gt; Rp 5.000.000</option>
+                    <option value="Tidak berpenghasilan">Tidak berpenghasilan</option>
+                  </select>
+                </div>
+              </div>
+            </fieldset>
+
+            <!-- WALI & KONTAK -->
+            <fieldset class="ppdb-fieldset">
+              <legend>6. Wali &amp; Kontak (jika berbeda dari orang tua)</legend>
+              <div class="form-grid">
+                <div class="form-group">
+                  <label for="wali_nama">Nama Wali</label>
+                  <input type="text" id="wali_nama" name="wali_nama" maxlength="100" placeholder="Kosongkan jika orang tua">
+                </div>
+                <div class="form-group">
+                  <label for="wali_hubungan">Hubungan dengan Siswa</label>
+                  <input type="text" id="wali_hubungan" name="wali_hubungan" maxlength="40" placeholder="Contoh: Kakek / Paman">
+                </div>
+                <div class="form-group">
+                  <label for="no_hp">No. HP / WhatsApp Orang Tua <span class="req">*</span></label>
+                  <input type="tel" id="no_hp" name="no_hp" required maxlength="16" inputmode="tel" placeholder="08xxxxxxxxxx">
+                </div>
+                <div class="form-group">
+                  <label for="email_ortu">Email Orang Tua</label>
+                  <input type="email" id="email_ortu" name="email_ortu" maxlength="80" placeholder="email@contoh.com">
+                </div>
+              </div>
+            </fieldset>
+
+            <!-- TAMBAHAN SDIT -->
+            <fieldset class="ppdb-fieldset">
+              <legend>7. Informasi Tambahan</legend>
+              <div class="form-grid">
+                <div class="form-group">
+                  <label for="minat_program">Minat Program Unggulan</label>
+                  <select id="minat_program" name="minat_program">
+                    <option value="">— Pilih —</option>
+                    <option value="Tahfidz Al-Qur'an">Tahfidz Al-Qur'an</option>
+                    <option value="Sains &amp; Teknologi">Sains &amp; Teknologi</option>
+                    <option value="Bahasa">Bahasa</option>
+                    <option value="Olahraga">Olahraga</option>
+                    <option value="Seni Islami">Seni Islami</option>
+                    <option value="Umum">Umum / Belum ditentukan</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="tinggi_badan">Tinggi Badan (cm)</label>
+                  <input type="number" id="tinggi_badan" name="tinggi_badan" min="80" max="180" placeholder="110">
+                </div>
+                <div class="form-group">
+                  <label for="berat_badan">Berat Badan (kg)</label>
+                  <input type="number" id="berat_badan" name="berat_badan" min="10" max="80" step="0.1" placeholder="20">
+                </div>
+                <div class="form-group full">
+                  <label for="catatan">Catatan / Keterangan Lain</label>
+                  <textarea id="catatan" name="catatan" rows="3" maxlength="500" placeholder="Alergi, riwayat kesehatan, atau info penting lainnya"></textarea>
+                </div>
+              </div>
+            </fieldset>
+
+            <div class="ppdb-consent">
+              <label class="checkbox-label">
+                <input type="checkbox" id="persetujuan" name="persetujuan" required>
+                <span>Saya menyatakan data yang diisi benar dan bersedia mengirimkan berkas pendukung ke sekolah. Data akan digunakan untuk keperluan PPDB dan pelaporan Dapodik sesuai ketentuan yang berlaku. <span class="req">*</span></span>
+              </label>
+            </div>
+
+            <div class="ppdb-form-actions">
+              <button type="submit" class="btn btn-accent" id="ppdbSubmitBtn">Kirim Pendaftaran</button>
+              <button type="reset" class="btn btn-ghost">Reset Form</button>
+            </div>
+            <div id="ppdbFormStatus" class="ppdb-form-status" role="status" aria-live="polite"></div>
+          </form>
         </div>
       </div>
     </section>

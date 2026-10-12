@@ -11,8 +11,14 @@
     "whatsapp": "62895355357028",
     "instagram": "https://www.instagram.com/sdit_daarul_istiqomah/",
     "instagramAlt": "https://www.instagram.com/sd_it_darul_istiqomah/",
-    "domain": "https://darulistiqomah.silverhawk.web.id",
-    "mapsEmbed": "https://www.google.com/maps?q=-6.4804,106.7577&z=16&output=embed"
+    "domain": "https://sditdaarulistiqomah.sch.id",
+    "mapsEmbed": "https://www.google.com/maps?q=-6.4804,106.7577&z=16&output=embed",
+    "domainAlt": "https://sditdaarulistiqomah.web.id",
+    "domains": [
+      "sditdaarulistiqomah.sch.id",
+      "sditdaarulistiqomah.web.id",
+      "darulistiqomah.silverhawk.web.id"
+    ]
   },
   "brand": {
     "primary": "#0B6E4F",
@@ -213,14 +219,18 @@
   "ppdb": {
     "open": true,
     "year": "2026/2027",
-    "note": "Pendaftaran dibuka. Kuota terbatas. Hubungi admin WhatsApp untuk info lengkap.",
+    "note": "Pendaftaran online dibuka. Isi formulir di bawah ini. Data siap diekspor untuk Dapodik & aplikasi PPDB.",
     "requirements": [
-      "Usia sesuai ketentuan PPDB SD",
+      "Usia sesuai ketentuan PPDB SD (minimal 6 tahun per 1 Juli 2026)",
       "Fotokopi Akta Kelahiran",
-      "Fotokopi Kartu Keluarga",
+      "Fotokopi Kartu Keluarga (KK)",
       "Fotokopi KTP orang tua/wali",
-      "Pas foto terbaru"
-    ]
+      "Pas foto berwarna terbaru ukuran 3x4 (2 lembar)",
+      "Fotokopi rapor/sertifikat TK/PAUD (jika ada)",
+      "Surat keterangan sehat dari dokter (saat observasi)"
+    ],
+    "quotaNote": "Kuota terbatas. Prioritas berdasarkan kelengkapan berkas dan hasil observasi.",
+    "formEnabled": true
   },
   "media": [
     {

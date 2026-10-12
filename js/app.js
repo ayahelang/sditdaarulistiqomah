@@ -721,6 +721,163 @@
   }
 
 
+
+  /* ========== Formulir PPDB (Dapodik-ready) ========== */
+  function setupPpdbForm() {
+    const form = document.getElementById('ppdbRegistrationForm');
+    if (!form) return;
+
+    const statusEl = document.getElementById('ppdbFormStatus');
+    const submitBtn = document.getElementById('ppdbSubmitBtn');
+
+    function showStatus(msg, type) {
+      if (!statusEl) return;
+      statusEl.textContent = msg;
+      statusEl.className = 'ppdb-form-status show ' + (type || '');
+    }
+
+    function collectFormData(formEl) {
+      const fd = new FormData(formEl);
+      const data = {};
+      fd.forEach((v, k) => {
+        data[k] = typeof v === 'string' ? v.trim() : v;
+      });
+      data.persetujuan = formEl.querySelector('#persetujuan')?.checked ? 'Ya' : 'Tidak';
+      data.submitted_at = new Date().toISOString();
+      data.user_agent = navigator.userAgent.slice(0, 120);
+      data.source_url = location.href;
+      return data;
+    }
+
+    function validatePpdb(data) {
+      const required = [
+        'nama_lengkap', 'nik', 'tempat_lahir', 'tanggal_lahir', 'jenis_kelamin', 'agama',
+        'alamat_jalan', 'desa_kelurahan', 'kecamatan', 'kabupaten_kota', 'provinsi',
+        'ayah_nama', 'ibu_nama', 'no_hp'
+      ];
+      for (const k of required) {
+        if (!data[k]) return 'Lengkapi field wajib: ' + k.replace(/_/g, ' ');
+      }
+      if (!/^[0-9]{16}$/.test(data.nik)) return 'NIK siswa harus 16 digit angka.';
+      if (data.ayah_nik && !/^[0-9]{16}$/.test(data.ayah_nik)) return 'NIK ayah harus 16 digit angka.';
+      if (data.ibu_nik && !/^[0-9]{16}$/.test(data.ibu_nik)) return 'NIK ibu harus 16 digit angka.';
+      if (data.nisn && !/^[0-9]{10}$/.test(data.nisn)) return 'NISN harus 10 digit angka.';
+      if (data.persetujuan !== 'Ya') return 'Centang persetujuan data terlebih dahulu.';
+      // Usia minimal kasar: lahir sebelum 1 Juli tahun ajaran - 6
+      try {
+        const lahir = new Date(data.tanggal_lahir);
+        const cutoff = new Date('2026-07-01');
+        const ageYears = (cutoff - lahir) / (365.25 * 24 * 3600 * 1000);
+        if (ageYears < 5.5) return 'Usia calon siswa belum memenuhi ketentuan minimal PPDB SD.';
+        if (ageYears > 12) return 'Tanggal lahir tidak wajar untuk jenjang SD. Periksa kembali.';
+      } catch (e) {}
+      return null;
+    }
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const data = collectFormData(form);
+      const err = validatePpdb(data);
+      if (err) {
+        showStatus(err, 'err');
+        return;
+      }
+
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Mengirim...';
+      }
+      showStatus('Mengirim data pendaftaran...', 'loading');
+
+      const cfg = window.SDIT_CONFIG || {};
+      const apiUrl = cfg.sheetsApiUrl || '';
+      let ok = false;
+      let regId = '';
+
+      try {
+        if (apiUrl && cfg.useSheets) {
+          const res = await fetch(apiUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            body: JSON.stringify({
+              action: 'submitPpdb',
+              token: cfg.apiToken || '',
+              data: data
+            })
+          });
+          const json = await res.json();
+          if (json && json.ok) {
+            ok = true;
+            regId = json.id || json.registrationId || '';
+          } else {
+            throw new Error((json && json.error) || 'Gagal menyimpan ke server');
+          }
+        } else {
+          // Fallback: simpan lokal + buka WA dengan ringkasan
+          const key = 'ppdb_drafts';
+          const list = JSON.parse(localStorage.getItem(key) || '[]');
+          regId = 'PPDB-' + Date.now();
+          data.id = regId;
+          list.unshift(data);
+          localStorage.setItem(key, JSON.stringify(list.slice(0, 50)));
+          ok = true;
+        }
+      } catch (err) {
+        console.error(err);
+        // Fallback offline
+        try {
+          const key = 'ppdb_drafts';
+          const list = JSON.parse(localStorage.getItem(key) || '[]');
+          regId = 'PPDB-LOCAL-' + Date.now();
+          data.id = regId;
+          data._error = String(err.message || err);
+          list.unshift(data);
+          localStorage.setItem(key, JSON.stringify(list.slice(0, 50)));
+          ok = true;
+          showStatus(
+            'Koneksi server gagal. Data disimpan sementara di perangkat Anda (ID: ' + regId + '). Silakan hubungi admin WhatsApp dan sebutkan ID tersebut, atau coba lagi nanti.',
+            'err'
+          );
+          if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Kirim Pendaftaran';
+          }
+          return;
+        } catch (e2) {
+          showStatus('Gagal mengirim: ' + (err.message || err), 'err');
+          if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Kirim Pendaftaran';
+          }
+          return;
+        }
+      }
+
+      if (ok) {
+        showStatus(
+          'Pendaftaran berhasil dikirim' + (regId ? ' (No. registrasi: ' + regId + ')' : '') +
+          '. Panitia akan menghubungi via WhatsApp untuk jadwal observasi. Simpan nomor registrasi Anda.',
+          'ok'
+        );
+        form.reset();
+        // Restore defaults
+        const agama = form.querySelector('#agama');
+        if (agama) agama.value = 'Islam';
+        const kw = form.querySelector('#kewarganegaraan');
+        if (kw) kw.value = 'WNI';
+        const prov = form.querySelector('#provinsi');
+        if (prov) prov.value = 'Jawa Barat';
+        const ta = form.querySelector('[name="tahun_ajaran"]');
+        if (ta) ta.value = '2026/2027';
+      }
+
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Kirim Pendaftaran';
+      }
+    });
+  }
+
   function setupSecretAdminEntry() {
     const logo = document.querySelector('.brand-logo-img, .brand');
     if (!logo) return;
@@ -804,6 +961,7 @@
       renderVideos(data.videos, data.media);
       renderActivities(data.activities);
       renderAnnouncements(data.announcements);
+      setupPpdbForm();
       // Tag sections that are not item-level
       document.querySelectorAll('#ppdb, .ppdb-box').forEach((node) => {
         node.setAttribute('data-admin-edit', 'school:0');
@@ -812,6 +970,7 @@
       console.error(err);
       const h = document.getElementById('schoolName');
       if (h) h.textContent = 'SDIT Daarul Istiqomah';
+      setupPpdbForm();
     }
   }
 

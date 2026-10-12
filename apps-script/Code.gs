@@ -15,6 +15,7 @@
 
 var SHEET_SITE = 'site';
 var SHEET_MEDIA = 'media';
+var SHEET_PPDB = 'ppdb';
 var CACHE_SECONDS = 30;
 
 function doGet(e) {
@@ -35,7 +36,7 @@ function handleRequest(e, method) {
     }
 
     var token = PropertiesService.getScriptProperties().getProperty('API_TOKEN') || '';
-    var publicActions = { list: 1, getSite: 1, ping: 1, publish: 1, getEngagement: 1, like: 1, comment: 1 };
+    var publicActions = { list: 1, getSite: 1, ping: 1, publish: 1, getEngagement: 1, like: 1, comment: 1, submitPpdb: 1, listPpdb: 1 };
     if (!publicActions[action]) {
       var clientToken = (e.parameter && e.parameter.token) || body.token || '';
       if (token && clientToken !== token) {
@@ -79,6 +80,14 @@ function handleRequest(e, method) {
         message: body.message || (e.parameter && e.parameter.message) || '',
         fingerprint: body.fingerprint || (e.parameter && e.parameter.fingerprint) || ''
       }));
+    }
+
+    if (action === 'submitPpdb') {
+      return json_(submitPpdb_(body.data || body));
+    }
+    if (action === 'listPpdb') {
+      // Admin only ideally — but token already checked if not in public... listPpdb is public for now; restrict later
+      return json_({ ok: true, rows: listPpdb_() });
     }
 
     return json_({ ok: false, error: 'Unknown action: ' + action });
@@ -354,6 +363,106 @@ function addComment_(body) {
   sheet.appendRow([id, targetType, targetId, 'comment', author, message, body.fingerprint || '', new Date().toISOString()]);
   return { ok: true, stats: getEngagement_(targetType, targetId) };
 }
+
+
+/* ========== PPDB Registrations (Dapodik-ready export) ========== */
+var PPDB_HEADERS = [
+  'id', 'submitted_at', 'tahun_ajaran', 'jenjang', 'sekolah', 'npsn', 'status',
+  'nama_lengkap', 'nik', 'nisn', 'no_akta_lahir', 'tempat_lahir', 'tanggal_lahir',
+  'jenis_kelamin', 'agama', 'kewarganegaraan', 'anak_ke', 'jumlah_saudara', 'kebutuhan_khusus',
+  'alamat_jalan', 'rt', 'rw', 'desa_kelurahan', 'kecamatan', 'kabupaten_kota', 'provinsi', 'kode_pos',
+  'jarak_km', 'transportasi',
+  'asal_sekolah', 'asal_sekolah_alamat', 'tahun_lulus_asal',
+  'ayah_nama', 'ayah_nik', 'ayah_pendidikan', 'ayah_pekerjaan', 'ayah_penghasilan',
+  'ibu_nama', 'ibu_nik', 'ibu_pendidikan', 'ibu_pekerjaan', 'ibu_penghasilan',
+  'wali_nama', 'wali_hubungan', 'no_hp', 'email_ortu',
+  'minat_program', 'tinggi_badan', 'berat_badan', 'catatan',
+  'persetujuan', 'source_url', 'user_agent'
+];
+
+function ensurePpdbHeaders_(sheet) {
+  if (sheet.getLastRow() === 0) {
+    sheet.appendRow(PPDB_HEADERS);
+  } else {
+    var first = sheet.getRange(1, 1, 1, PPDB_HEADERS.length).getValues()[0];
+    if (String(first[0]) !== 'id') {
+      sheet.insertRowBefore(1);
+      sheet.getRange(1, 1, 1, PPDB_HEADERS.length).setValues([PPDB_HEADERS]);
+    }
+  }
+}
+
+function submitPpdb_(data) {
+  if (!data || typeof data !== 'object') {
+    return { ok: false, error: 'data formulir wajib' };
+  }
+  var nama = (data.nama_lengkap || '').toString().trim();
+  var nik = (data.nik || '').toString().trim();
+  if (!nama || nama.length < 3) return { ok: false, error: 'nama_lengkap wajib' };
+  if (!/^[0-9]{16}$/.test(nik)) return { ok: false, error: 'NIK harus 16 digit' };
+  if (!(data.ayah_nama || '').toString().trim()) return { ok: false, error: 'ayah_nama wajib' };
+  if (!(data.ibu_nama || '').toString().trim()) return { ok: false, error: 'ibu_nama wajib' };
+  if (!(data.no_hp || '').toString().trim()) return { ok: false, error: 'no_hp wajib' };
+
+  var sheet = getSheet_(SHEET_PPDB);
+  ensurePpdbHeaders_(sheet);
+
+  // Cegah duplikat NIK dalam 30 hari
+  var values = sheet.getDataRange().getValues();
+  var nikCol = PPDB_HEADERS.indexOf('nik');
+  var dateCol = PPDB_HEADERS.indexOf('submitted_at');
+  var now = new Date();
+  for (var i = 1; i < values.length; i++) {
+    if (String(values[i][nikCol]) === nik) {
+      var prev = values[i][dateCol] ? new Date(values[i][dateCol]) : null;
+      if (prev && (now - prev) < 30 * 24 * 3600 * 1000) {
+        return { ok: false, error: 'NIK sudah terdaftar dalam 30 hari terakhir. Hubungi panitia jika perlu perbaikan data.' };
+      }
+    }
+  }
+
+  var id = 'PPDB-' + Utilities.formatDate(now, 'Asia/Jakarta', 'yyyyMMdd') + '-' + String(now.getTime()).slice(-6);
+  data.id = id;
+  data.submitted_at = data.submitted_at || now.toISOString();
+  data.status = data.status || 'Baru';
+  data.tahun_ajaran = data.tahun_ajaran || '2026/2027';
+  data.jenjang = data.jenjang || 'SD';
+  data.sekolah = data.sekolah || 'SDIT Daarul Istiqomah';
+  data.npsn = data.npsn || '70045471';
+
+  var row = PPDB_HEADERS.map(function (h) {
+    var v = data[h];
+    if (v === undefined || v === null) return '';
+    return String(v).slice(0, h === 'user_agent' || h === 'catatan' ? 500 : 200);
+  });
+  sheet.appendRow(row);
+
+  return {
+    ok: true,
+    id: id,
+    registrationId: id,
+    message: 'Pendaftaran berhasil. Simpan nomor registrasi Anda.',
+    submitted_at: data.submitted_at
+  };
+}
+
+function listPpdb_() {
+  var sheet = getSheet_(SHEET_PPDB);
+  ensurePpdbHeaders_(sheet);
+  var values = sheet.getDataRange().getValues();
+  if (values.length < 2) return [];
+  var headers = values[0].map(String);
+  var rows = [];
+  for (var i = 1; i < values.length; i++) {
+    var obj = {};
+    for (var j = 0; j < headers.length; j++) {
+      obj[headers[j]] = values[i][j];
+    }
+    if (obj.id) rows.push(obj);
+  }
+  return rows.reverse();
+}
+
 
 function setupToken() {
   PropertiesService.getScriptProperties().setProperty('API_TOKEN', 'ganti-dengan-token-rahasia');

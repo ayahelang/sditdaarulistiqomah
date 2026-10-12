@@ -185,3 +185,27 @@ window.SDIT_CONFIG = {
 - Write (butuh token): panel admin → Sinkron ke Google Sheets
 
 Jika muncul `Unauthorized`, token di config.js dan Script properties belum sama.
+
+
+---
+
+## Sheet PPDB (pendaftaran online)
+
+Setelah update `Code.gs` yang mendukung `submitPpdb`, buat sheet bernama **`ppdb`** (opsional — header otomatis saat submit pertama).
+
+Kolom mengikuti field Dapodik-ready:
+```
+id | submitted_at | tahun_ajaran | jenjang | sekolah | npsn | status |
+nama_lengkap | nik | nisn | no_akta_lahir | tempat_lahir | tanggal_lahir |
+jenis_kelamin | agama | kewarganegaraan | anak_ke | jumlah_saudara | kebutuhan_khusus |
+alamat_jalan | rt | rw | desa_kelurahan | kecamatan | kabupaten_kota | provinsi | kode_pos |
+jarak_km | transportasi | asal_sekolah | asal_sekolah_alamat | tahun_lulus_asal |
+ayah_nama | ayah_nik | ayah_pendidikan | ayah_pekerjaan | ayah_penghasilan |
+ibu_nama | ibu_nik | ibu_pendidikan | ibu_pekerjaan | ibu_penghasilan |
+wali_nama | wali_hubungan | no_hp | email_ortu |
+minat_program | tinggi_badan | berat_badan | catatan | persetujuan | source_url | user_agent
+```
+
+**Redeploy** Web App (New version) agar endpoint `submitPpdb` aktif.
+
+Export → Download CSV dari sheet `ppdb` untuk diimpor ke aplikasi PPDB sekolah atau mapping ke Dapodik.

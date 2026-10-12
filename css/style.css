@@ -724,3 +724,129 @@ body.admin-edit-armed [data-admin-edit]:hover {
 .video-card .engage-wrap {
   border-radius: 0 0 var(--radius) var(--radius);
 }
+
+/* ========== Formulir PPDB ========== */
+.ppdb-form-wrap {
+  margin-top: 1.5rem;
+  margin-bottom: 2rem;
+}
+.ppdb-form {
+  background: #fff;
+  border-radius: var(--radius, 16px);
+  border: 1px solid rgba(11, 110, 79, 0.12);
+  box-shadow: 0 12px 40px rgba(8, 76, 55, 0.08);
+  padding: 1.5rem 1.25rem 2rem;
+}
+.ppdb-fieldset {
+  border: 1px solid rgba(11, 110, 79, 0.15);
+  border-radius: 12px;
+  padding: 1rem 1rem 1.15rem;
+  margin: 0 0 1.25rem;
+  background: #fafcfb;
+}
+.ppdb-fieldset legend {
+  font-weight: 800;
+  color: var(--primary, #0B6E4F);
+  padding: 0 .5rem;
+  font-size: .95rem;
+}
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: .85rem 1rem;
+}
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: .3rem;
+}
+.form-group.full {
+  grid-column: 1 / -1;
+}
+.form-group label {
+  font-size: .82rem;
+  font-weight: 700;
+  color: var(--ink, #1A1F2C);
+}
+.form-group .req { color: #c0392b; }
+.form-group .opt { color: var(--muted, #5B6575); font-weight: 500; font-size: .78rem; }
+.form-group input,
+.form-group select,
+.form-group textarea {
+  padding: .55rem .7rem;
+  border: 1.5px solid rgba(11, 110, 79, 0.25);
+  border-radius: 8px;
+  font-size: .9rem;
+  font-family: inherit;
+  color: var(--ink, #1A1F2C);
+  background: #fff;
+  transition: border-color .15s ease, box-shadow .15s ease;
+}
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+  outline: none;
+  border-color: var(--primary, #0B6E4F);
+  box-shadow: 0 0 0 3px rgba(11, 110, 79, 0.15);
+}
+.form-group input:invalid:not(:placeholder-shown):not(:focus),
+.form-group select:invalid:not(:focus) {
+  border-color: #e74c3c;
+}
+.ppdb-consent {
+  margin: 1rem 0 1.25rem;
+  padding: .85rem 1rem;
+  background: var(--cream, #F7F4EC);
+  border-radius: 10px;
+  border: 1px solid rgba(201, 162, 39, 0.35);
+}
+.checkbox-label {
+  display: flex;
+  gap: .65rem;
+  align-items: flex-start;
+  font-size: .88rem;
+  line-height: 1.45;
+  cursor: pointer;
+  color: var(--ink, #1A1F2C);
+}
+.checkbox-label input {
+  margin-top: .2rem;
+  width: 1.1rem;
+  height: 1.1rem;
+  accent-color: var(--primary, #0B6E4F);
+  flex-shrink: 0;
+}
+.ppdb-form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .75rem;
+  align-items: center;
+}
+.ppdb-form-status {
+  margin-top: 1rem;
+  padding: .75rem 1rem;
+  border-radius: 10px;
+  font-size: .9rem;
+  font-weight: 600;
+  display: none;
+}
+.ppdb-form-status.show { display: block; }
+.ppdb-form-status.ok {
+  background: #e8f8f0;
+  color: #084C37;
+  border: 1px solid #12A87A;
+}
+.ppdb-form-status.err {
+  background: #fef0f0;
+  color: #922b21;
+  border: 1px solid #e74c3c;
+}
+.ppdb-form-status.loading {
+  background: #f0f4f8;
+  color: #334155;
+  border: 1px solid #94a3b8;
+}
+@media (max-width: 640px) {
+  .form-grid { grid-template-columns: 1fr; }
+  .ppdb-form { padding: 1rem .85rem 1.5rem; }
+}
