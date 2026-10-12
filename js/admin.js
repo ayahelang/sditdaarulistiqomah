@@ -182,15 +182,18 @@
     if (conf.useSheets && conf.sheetsApiUrl) {
       try {
         await loadFromSheets();
+        loadPpdbList().catch(() => {});
         return;
       } catch (e) {
         status('Sheets belum siap (' + e.message + '). Memuat site.json…');
         await loadFromFile();
+        loadPpdbList().catch(() => {});
         return;
       }
     }
     status('Peringatan: useSheets/sheetsApiUrl belum diisi. Memuat site.json.');
     await loadFromFile();
+    loadPpdbList().catch(() => {});
   }
 
   function fillForm() {
@@ -871,6 +874,502 @@
   (async () => {
     await loadPreferred();
   })();
+
+
+  /* ========== PPDB Registrations Admin ========== */
+  let ppdbRows = [];
+  let ppdbEditId = null;
+
+  const PPDB_FIELDS = [
+    { key: 'id', label: 'No. Registrasi', ro: true },
+    { key: 'status', label: 'Status', type: 'select', options: ['Baru', 'Proses', 'Diterima', 'Ditolak'] },
+    { key: 'tahun_ajaran', label: 'Tahun Ajaran' },
+    { key: 'nama_lengkap', label: 'Nama Lengkap *' },
+    { key: 'nik', label: 'NIK *' },
+    { key: 'nisn', label: 'NISN' },
+    { key: 'no_akta_lahir', label: 'No. Akta Kelahiran' },
+    { key: 'tempat_lahir', label: 'Tempat Lahir' },
+    { key: 'tanggal_lahir', label: 'Tanggal Lahir', type: 'date' },
+    { key: 'jenis_kelamin', label: 'Jenis Kelamin', type: 'select', options: ['L', 'P'] },
+    { key: 'agama', label: 'Agama' },
+    { key: 'kewarganegaraan', label: 'Kewarganegaraan' },
+    { key: 'anak_ke', label: 'Anak ke-' },
+    { key: 'jumlah_saudara', label: 'Jumlah Saudara' },
+    { key: 'kebutuhan_khusus', label: 'Berkebutuhan Khusus' },
+    { key: 'alamat_jalan', label: 'Alamat Jalan', full: true },
+    { key: 'rt', label: 'RT' },
+    { key: 'rw', label: 'RW' },
+    { key: 'desa_kelurahan', label: 'Desa/Kelurahan' },
+    { key: 'kecamatan', label: 'Kecamatan' },
+    { key: 'kabupaten_kota', label: 'Kabupaten/Kota' },
+    { key: 'provinsi', label: 'Provinsi' },
+    { key: 'kode_pos', label: 'Kode Pos' },
+    { key: 'jarak_km', label: 'Jarak (km)' },
+    { key: 'transportasi', label: 'Transportasi' },
+    { key: 'asal_sekolah', label: 'Asal Sekolah' },
+    { key: 'asal_sekolah_alamat', label: 'Alamat Asal Sekolah' },
+    { key: 'tahun_lulus_asal', label: 'Tahun Lulus Asal' },
+    { key: 'ayah_nama', label: 'Nama Ayah' },
+    { key: 'ayah_nik', label: 'NIK Ayah' },
+    { key: 'ayah_pendidikan', label: 'Pendidikan Ayah' },
+    { key: 'ayah_pekerjaan', label: 'Pekerjaan Ayah' },
+    { key: 'ayah_penghasilan', label: 'Penghasilan Ayah' },
+    { key: 'ibu_nama', label: 'Nama Ibu' },
+    { key: 'ibu_nik', label: 'NIK Ibu' },
+    { key: 'ibu_pendidikan', label: 'Pendidikan Ibu' },
+    { key: 'ibu_pekerjaan', label: 'Pekerjaan Ibu' },
+    { key: 'ibu_penghasilan', label: 'Penghasilan Ibu' },
+    { key: 'wali_nama', label: 'Nama Wali' },
+    { key: 'wali_hubungan', label: 'Hubungan Wali' },
+    { key: 'no_hp', label: 'No. HP / WA' },
+    { key: 'email_ortu', label: 'Email Orang Tua' },
+    { key: 'minat_program', label: 'Minat Program' },
+    { key: 'tinggi_badan', label: 'Tinggi Badan (cm)' },
+    { key: 'berat_badan', label: 'Berat Badan (kg)' },
+    { key: 'catatan', label: 'Catatan', full: true, type: 'textarea' },
+    { key: 'submitted_at', label: 'Waktu Kirim', ro: true }
+  ];
+
+  async function ppdbApi(action, payload) {
+    const conf = cfg();
+    if (!conf.sheetsApiUrl) throw new Error('sheetsApiUrl belum diisi di config.js');
+    const body = Object.assign({ action: action, token: conf.apiToken || '' }, payload || {});
+    const res = await fetch(conf.sheetsApiUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(body)
+    });
+    const j = await res.json();
+    if (!j.ok) throw new Error(j.error || 'Request gagal');
+    return j;
+  }
+
+  async function loadPpdbList() {
+    const tbody = $('ppdbTableBody');
+    if (tbody) tbody.innerHTML = '<tr><td colspan="9" class="ppdb-empty">Memuat data…</td></tr>';
+    try {
+      const j = await ppdbApi('listPpdb');
+      ppdbRows = j.rows || [];
+      renderPpdbTable();
+      status('✓ Data PPDB dimuat (' + ppdbRows.length + ' pendaftar)');
+    } catch (e) {
+      if (tbody) tbody.innerHTML = '<tr><td colspan="9" class="ppdb-empty">Gagal memuat: ' + escapeHtml(e.message) + '<br><span class="hint">Pastikan Apps Script sudah di-redeploy dengan endpoint listPpdb.</span></td></tr>';
+      status('✗ Gagal muat PPDB: ' + e.message);
+    }
+  }
+
+  function filteredPpdbRows() {
+    const q = (($('ppdbSearch') && $('ppdbSearch').value) || '').trim().toLowerCase();
+    const st = (($('ppdbFilterStatus') && $('ppdbFilterStatus').value) || '').trim();
+    return ppdbRows.filter((r) => {
+      if (st && String(r.status || '') !== st) return false;
+      if (!q) return true;
+      const hay = [r.id, r.nama_lengkap, r.nik, r.no_hp, r.ayah_nama, r.ibu_nama].map((x) => String(x || '').toLowerCase()).join(' ');
+      return hay.indexOf(q) !== -1;
+    });
+  }
+
+  function formatPpdbDate(v) {
+    if (!v) return '—';
+    try {
+      const d = new Date(v);
+      if (isNaN(d.getTime())) return String(v).slice(0, 16);
+      return d.toLocaleString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+    } catch (_) { return String(v); }
+  }
+
+  function statusBadge(s) {
+    const v = String(s || 'Baru');
+    const cls = v.toLowerCase().replace(/\s+/g, '');
+    return '<span class="badge-status ' + escapeHtml(cls) + '">' + escapeHtml(v) + '</span>';
+  }
+
+  function renderPpdbTable() {
+    const tbody = $('ppdbTableBody');
+    const count = $('ppdbCount');
+    if (!tbody) return;
+    const rows = filteredPpdbRows();
+    if (count) count.textContent = rows.length + ' / ' + ppdbRows.length + ' data';
+    if (!rows.length) {
+      tbody.innerHTML = '<tr><td colspan="9" class="ppdb-empty">' + (ppdbRows.length ? 'Tidak ada yang cocok dengan filter.' : 'Belum ada pendaftaran.') + '</td></tr>';
+      return;
+    }
+    tbody.innerHTML = rows.map((r) => {
+      const id = escapeHtml(String(r.id || ''));
+      return '<tr data-ppdb-id="' + id + '">' +
+        '<td class="mono">' + id + '</td>' +
+        '<td>' + escapeHtml(formatPpdbDate(r.submitted_at)) + '</td>' +
+        '<td><strong>' + escapeHtml(r.nama_lengkap || '—') + '</strong></td>' +
+        '<td class="mono">' + escapeHtml(r.nik || '—') + '</td>' +
+        '<td>' + escapeHtml(r.jenis_kelamin || '—') + '</td>' +
+        '<td>' + escapeHtml([r.tempat_lahir, r.tanggal_lahir].filter(Boolean).join(', ') || '—') + '</td>' +
+        '<td>' + escapeHtml(r.ayah_nama || r.ibu_nama || '—') + '<div class="meta">' + escapeHtml(r.no_hp || '') + '</div></td>' +
+        '<td>' + statusBadge(r.status) + '</td>' +
+        '<td class="ppdb-actions-cell">' +
+          '<button type="button" class="btn btn-ghost" data-ppdb-act="view" data-id="' + id + '">Detail</button>' +
+          '<button type="button" class="btn btn-ghost" data-ppdb-act="print" data-id="' + id + '">PDF</button>' +
+          '<button type="button" class="btn btn-ghost" data-ppdb-act="del" data-id="' + id + '" style="color:#b91c1c">Hapus</button>' +
+        '</td></tr>';
+    }).join('');
+
+    tbody.querySelectorAll('[data-ppdb-act]').forEach((btn) => {
+      btn.onclick = () => {
+        const act = btn.getAttribute('data-ppdb-act');
+        const id = btn.getAttribute('data-id');
+        if (act === 'view') openPpdbModal(id);
+        else if (act === 'print') {
+          const row = ppdbRows.find((x) => String(x.id) === String(id));
+          if (row) printPpdbPdf(row);
+        } else if (act === 'del') deletePpdbRow(id);
+      };
+    });
+  }
+
+  function openPpdbModal(id) {
+    const modal = $('ppdbModal');
+    const body = $('ppdbModalBody');
+    const title = $('ppdbModalTitle');
+    if (!modal || !body) return;
+
+    let row = null;
+    if (id === '__new__') {
+      ppdbEditId = null;
+      row = {
+        status: 'Baru',
+        tahun_ajaran: (data && data.ppdb && data.ppdb.year) || '2026/2027',
+        agama: 'Islam',
+        kewarganegaraan: 'WNI',
+        provinsi: 'Jawa Barat',
+        jenjang: 'SD',
+        sekolah: 'SDIT Daarul Istiqomah',
+        npsn: '70045471'
+      };
+      if (title) title.textContent = 'Tambah Pendaftaran Manual';
+    } else {
+      row = ppdbRows.find((x) => String(x.id) === String(id));
+      if (!row) { status('Data tidak ditemukan'); return; }
+      ppdbEditId = String(id);
+      if (title) title.textContent = 'Detail / Edit — ' + (row.nama_lengkap || id);
+    }
+
+    body.innerHTML = '<div class="ppdb-modal-grid">' + PPDB_FIELDS.map((f) => {
+      const val = row[f.key] != null ? String(row[f.key]) : '';
+      const full = f.full ? ' full' : '';
+      const ro = f.ro ? ' readonly' : '';
+      let input;
+      if (f.type === 'select') {
+        const opts = (f.options || []).map((o) =>
+          '<option value="' + escapeHtml(o) + '"' + (val === o ? ' selected' : '') + '>' + escapeHtml(o) + '</option>'
+        ).join('');
+        input = '<select id="ppdb_f_' + f.key + '"' + ro + '>' + opts + '</select>';
+      } else if (f.type === 'textarea') {
+        input = '<textarea id="ppdb_f_' + f.key + '" rows="2"' + ro + '>' + escapeHtml(val) + '</textarea>';
+      } else {
+        const t = f.type === 'date' ? 'date' : 'text';
+        input = '<input type="' + t + '" id="ppdb_f_' + f.key + '" value="' + escapeHtml(val) + '"' + ro + '>';
+      }
+      return '<div class="' + full + '"><label>' + escapeHtml(f.label) + '</label>' + input + '</div>';
+    }).join('') + '</div>';
+
+    modal.hidden = false;
+  }
+
+  function closePpdbModal() {
+    const modal = $('ppdbModal');
+    if (modal) modal.hidden = true;
+    ppdbEditId = null;
+  }
+
+  function readPpdbModalForm() {
+    const out = {};
+    PPDB_FIELDS.forEach((f) => {
+      const el = document.getElementById('ppdb_f_' + f.key);
+      if (el) out[f.key] = el.value.trim();
+    });
+    return out;
+  }
+
+  async function savePpdbModal() {
+    const formData = readPpdbModalForm();
+    if (!formData.nama_lengkap) { status('Nama lengkap wajib'); return; }
+    if (!formData.nik || !/^[0-9]{16}$/.test(formData.nik)) { status('NIK harus 16 digit'); return; }
+
+    try {
+      if (ppdbEditId) {
+        formData.id = ppdbEditId;
+        await ppdbApi('updatePpdb', { data: formData });
+        status('✓ Data PPDB diperbarui');
+      } else {
+        // create via submitPpdb
+        formData.persetujuan = 'Ya';
+        formData.submitted_at = new Date().toISOString();
+        const j = await ppdbApi('submitPpdb', { data: formData });
+        status('✓ Pendaftaran ditambahkan (' + (j.id || '') + ')');
+      }
+      closePpdbModal();
+      await loadPpdbList();
+    } catch (e) {
+      status('✗ Gagal simpan: ' + e.message);
+    }
+  }
+
+  async function deletePpdbRow(id) {
+    if (!id) return;
+    const ok = await themedConfirm('Hapus pendaftaran ' + id + '? Tindakan ini tidak bisa dibatalkan.');
+    if (!ok) return;
+    try {
+      await ppdbApi('deletePpdb', { id: id });
+      status('✓ Data dihapus');
+      closePpdbModal();
+      await loadPpdbList();
+    } catch (e) {
+      status('✗ Gagal hapus: ' + e.message);
+    }
+  }
+
+  function downloadPpdbCsv() {
+    const rows = filteredPpdbRows();
+    if (!rows.length) { status('Tidak ada data untuk diunduh'); return; }
+    const headers = PPDB_FIELDS.map((f) => f.key);
+    // also include fixed meta fields
+    const extra = ['jenjang', 'sekolah', 'npsn', 'persetujuan', 'source_url'];
+    extra.forEach((h) => { if (headers.indexOf(h) === -1) headers.push(h); });
+
+    function csvEscape(v) {
+      const s = v == null ? '' : String(v);
+      if (/[",\n\r]/.test(s)) return '"' + s.replace(/"/g, '""') + '"';
+      return s;
+    }
+    const lines = [headers.join(',')];
+    rows.forEach((r) => {
+      lines.push(headers.map((h) => csvEscape(r[h])).join(','));
+    });
+    const blob = new Blob(['\ufeff' + lines.join('\n')], { type: 'text/csv;charset=utf-8' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'ppdb-sdit-daarul-istiqomah-' + new Date().toISOString().slice(0, 10) + '.csv';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+    status('✓ CSV diunduh (' + rows.length + ' baris)');
+  }
+
+  function printPpdbPdf(row) {
+    if (!row) return;
+    const school = (data && data.school) || {};
+    const schoolName = school.fullName || school.name || 'SDIT Daarul Istiqomah';
+    const addr = school.address || '';
+    const npsn = school.npsn || row.npsn || '70045471';
+    const year = row.tahun_ajaran || (data && data.ppdb && data.ppdb.year) || '2026/2027';
+
+    function cell(label, val) {
+      return '<div class="f"><span class="l">' + label + '</span><span class="v">' + (val != null && val !== '' ? String(val) : '—') + '</span></div>';
+    }
+    function section(title, inner) {
+      return '<div class="sec"><h2>' + title + '</h2><div class="grid">' + inner + '</div></div>';
+    }
+
+    const jk = row.jenis_kelamin === 'L' ? 'Laki-laki' : (row.jenis_kelamin === 'P' ? 'Perempuan' : (row.jenis_kelamin || '—'));
+    const alamat = [row.alamat_jalan, (row.rt || row.rw) ? ('RT ' + (row.rt || '—') + '/RW ' + (row.rw || '—')) : '', row.desa_kelurahan, row.kecamatan, row.kabupaten_kota, row.provinsi, row.kode_pos].filter(Boolean).join(', ');
+
+    const html = `<!DOCTYPE html>
+<html lang="id"><head>
+<meta charset="UTF-8">
+<title>Formulir PPDB — ${escapeHtml(row.nama_lengkap || row.id || '')}</title>
+<style>
+  @page { size: A4; margin: 14mm 14mm 16mm 14mm; }
+  * { box-sizing: border-box; }
+  body {
+    font-family: "Segoe UI", Tahoma, Arial, sans-serif;
+    color: #1a1f2c;
+    font-size: 10.5pt;
+    line-height: 1.35;
+    margin: 0;
+  }
+  .sheet { max-width: 190mm; margin: 0 auto; }
+  .head {
+    display: flex; align-items: flex-start; gap: 14px;
+    border-bottom: 3px solid #0B6E4F; padding-bottom: 10px; margin-bottom: 12px;
+  }
+  .logo {
+    width: 58px; height: 58px; object-fit: contain;
+    border-radius: 8px; border: 1px solid #dce8e2;
+  }
+  .head-text { flex: 1; }
+  .head-text h1 {
+    margin: 0; font-size: 14pt; color: #084C37; letter-spacing: .02em;
+  }
+  .head-text .sub { margin: 2px 0 0; font-size: 9pt; color: #5B6575; }
+  .head-text .title-form {
+    margin-top: 6px; font-size: 12pt; font-weight: 800; color: #1a1f2c;
+    text-transform: uppercase; letter-spacing: .04em;
+  }
+  .meta-bar {
+    display: flex; flex-wrap: wrap; gap: 8px 18px;
+    background: #f3faf6; border: 1px solid #cfe5da; border-radius: 6px;
+    padding: 7px 10px; margin-bottom: 12px; font-size: 9.5pt;
+  }
+  .meta-bar strong { color: #084C37; }
+  .sec { margin-bottom: 10px; page-break-inside: avoid; }
+  .sec h2 {
+    margin: 0 0 6px; font-size: 10pt; color: #fff; background: #0B6E4F;
+    padding: 4px 8px; border-radius: 4px; letter-spacing: .03em;
+  }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 12px; }
+  .f { display: flex; gap: 6px; padding: 2px 0; border-bottom: 1px dotted #d5e0da; align-items: baseline; }
+  .f.full { grid-column: 1 / -1; }
+  .l { flex: 0 0 42%; max-width: 160px; color: #5B6575; font-size: 8.5pt; }
+  .v { flex: 1; font-weight: 600; color: #1a1f2c; word-break: break-word; }
+  .sign {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 24px;
+    margin-top: 18px; page-break-inside: avoid;
+  }
+  .sign .box { text-align: center; font-size: 9.5pt; }
+  .sign .space { height: 56px; }
+  .foot {
+    margin-top: 14px; padding-top: 8px; border-top: 1px solid #cfe5da;
+    font-size: 8pt; color: #5B6575; display: flex; justify-content: space-between;
+  }
+  @media print {
+    body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .no-print { display: none !important; }
+  }
+</style>
+</head><body>
+<div class="sheet">
+  <div class="head">
+    <img class="logo" src="../images/logo.jpg" alt="Logo" onerror="this.style.display='none'">
+    <div class="head-text">
+      <h1>${escapeHtml(schoolName)}</h1>
+      <p class="sub">${escapeHtml(addr)}</p>
+      <p class="sub">NPSN: ${escapeHtml(String(npsn))} · Domain: sditdaarulistiqomah.sch.id</p>
+      <div class="title-form">Formulir Pendaftaran Peserta Didik Baru (PPDB)</div>
+    </div>
+  </div>
+
+  <div class="meta-bar">
+    <div><strong>No. Registrasi:</strong> ${escapeHtml(row.id || '—')}</div>
+    <div><strong>Tahun Ajaran:</strong> ${escapeHtml(year)}</div>
+    <div><strong>Status:</strong> ${escapeHtml(row.status || 'Baru')}</div>
+    <div><strong>Tanggal Daftar:</strong> ${escapeHtml(formatPpdbDate(row.submitted_at))}</div>
+  </div>
+
+  ${section('A. Identitas Calon Peserta Didik',
+    cell('Nama Lengkap', row.nama_lengkap) +
+    cell('NIK', row.nik) +
+    cell('NISN', row.nisn) +
+    cell('No. Akta Kelahiran', row.no_akta_lahir) +
+    cell('Tempat, Tanggal Lahir', [row.tempat_lahir, row.tanggal_lahir].filter(Boolean).join(', ')) +
+    cell('Jenis Kelamin', jk) +
+    cell('Agama', row.agama) +
+    cell('Kewarganegaraan', row.kewarganegaraan) +
+    cell('Anak ke-', row.anak_ke) +
+    cell('Jumlah Saudara', row.jumlah_saudara) +
+    cell('Berkebutuhan Khusus', row.kebutuhan_khusus)
+  )}
+
+  ${section('B. Alamat Tempat Tinggal',
+    '<div class="f full"><span class="l">Alamat Lengkap</span><span class="v">' + escapeHtml(alamat || '—') + '</span></div>' +
+    cell('Jarak ke Sekolah', row.jarak_km ? row.jarak_km + ' km' : '') +
+    cell('Transportasi', row.transportasi)
+  )}
+
+  ${section('C. Pendidikan Sebelumnya',
+    cell('Asal TK/PAUD/RA', row.asal_sekolah) +
+    cell('Alamat Asal Sekolah', row.asal_sekolah_alamat) +
+    cell('Tahun Lulus', row.tahun_lulus_asal)
+  )}
+
+  ${section('D. Data Ayah Kandung',
+    cell('Nama Ayah', row.ayah_nama) +
+    cell('NIK Ayah', row.ayah_nik) +
+    cell('Pendidikan', row.ayah_pendidikan) +
+    cell('Pekerjaan', row.ayah_pekerjaan) +
+    cell('Penghasilan', row.ayah_penghasilan)
+  )}
+
+  ${section('E. Data Ibu Kandung',
+    cell('Nama Ibu', row.ibu_nama) +
+    cell('NIK Ibu', row.ibu_nik) +
+    cell('Pendidikan', row.ibu_pendidikan) +
+    cell('Pekerjaan', row.ibu_pekerjaan) +
+    cell('Penghasilan', row.ibu_penghasilan)
+  )}
+
+  ${section('F. Wali & Kontak',
+    cell('Nama Wali', row.wali_nama) +
+    cell('Hubungan', row.wali_hubungan) +
+    cell('No. HP / WhatsApp', row.no_hp) +
+    cell('Email', row.email_ortu)
+  )}
+
+  ${section('G. Informasi Tambahan',
+    cell('Minat Program', row.minat_program) +
+    cell('Tinggi / Berat', [row.tinggi_badan ? row.tinggi_badan + ' cm' : '', row.berat_badan ? row.berat_badan + ' kg' : ''].filter(Boolean).join(' / ')) +
+    '<div class="f full"><span class="l">Catatan</span><span class="v">' + escapeHtml(row.catatan || '—') + '</span></div>'
+  )}
+
+  <div class="sign">
+    <div class="box">
+      <div>Mengetahui,<br>Orang Tua / Wali</div>
+      <div class="space"></div>
+      <div><strong>${escapeHtml(row.ayah_nama || row.ibu_nama || row.wali_nama || '............................')}</strong></div>
+    </div>
+    <div class="box">
+      <div>Tajurhalang, ........................<br>Petugas PPDB</div>
+      <div class="space"></div>
+      <div><strong>............................</strong></div>
+    </div>
+  </div>
+
+  <div class="foot">
+    <span>Dokumen ini dicetak dari sistem PPDB online SDIT Daarul Istiqomah · ${escapeHtml(new Date().toLocaleString('id-ID'))}</span>
+    <span>${escapeHtml(row.id || '')}</span>
+  </div>
+</div>
+<script>window.onload=function(){setTimeout(function(){window.print();},250);}</script>
+</body></html>`;
+
+    const w = window.open('', '_blank', 'noopener,width=900,height=1000');
+    if (!w) {
+      status('Pop-up diblokir. Izinkan pop-up untuk cetak PDF.');
+      return;
+    }
+    w.document.open();
+    w.document.write(html);
+    w.document.close();
+  }
+
+  // Wire PPDB UI
+  const btnPpdbRefresh = $('btnPpdbRefresh');
+  if (btnPpdbRefresh) btnPpdbRefresh.onclick = () => loadPpdbList();
+  const btnPpdbDownload = $('btnPpdbDownload');
+  if (btnPpdbDownload) btnPpdbDownload.onclick = () => downloadPpdbCsv();
+  const btnPpdbAdd = $('btnPpdbAdd');
+  if (btnPpdbAdd) btnPpdbAdd.onclick = () => openPpdbModal('__new__');
+  const ppdbSearch = $('ppdbSearch');
+  if (ppdbSearch) ppdbSearch.addEventListener('input', () => renderPpdbTable());
+  const ppdbFilter = $('ppdbFilterStatus');
+  if (ppdbFilter) ppdbFilter.addEventListener('change', () => renderPpdbTable());
+
+  const btnPpdbModalSave = $('btnPpdbModalSave');
+  if (btnPpdbModalSave) btnPpdbModalSave.onclick = () => savePpdbModal();
+  const btnPpdbModalClose = $('btnPpdbModalClose');
+  if (btnPpdbModalClose) btnPpdbModalClose.onclick = () => closePpdbModal();
+  const btnPpdbModalPrint = $('btnPpdbModalPrint');
+  if (btnPpdbModalPrint) btnPpdbModalPrint.onclick = () => {
+    const formData = readPpdbModalForm();
+    if (ppdbEditId) formData.id = ppdbEditId;
+    printPpdbPdf(formData);
+  };
+  const btnPpdbModalDelete = $('btnPpdbModalDelete');
+  if (btnPpdbModalDelete) btnPpdbModalDelete.onclick = () => {
+    if (ppdbEditId) deletePpdbRow(ppdbEditId);
+    else status('Simpan dulu sebelum menghapus, atau tutup form tambah.');
+  };
+  const ppdbModal = $('ppdbModal');
+  if (ppdbModal) ppdbModal.addEventListener('click', (e) => { if (e.target.id === 'ppdbModal') closePpdbModal(); });
+
 
   // Deep-link from frontend quick-edit: admin/?edit=carousel:0
   function handleDeepLinkEdit() {

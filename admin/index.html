@@ -268,12 +268,35 @@
       background: #fff; cursor: pointer;
     }
     .ann-paste-zone:focus, .ann-paste-zone.drag { border-color: var(--primary); background: #f0faf5; outline: none; }
+
+    /* PPDB admin */
+    .ppdb-toolbar { display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0 1rem; align-items:center; }
+    .ppdb-search { flex:1; min-width:160px; max-width:280px; }
+    .ppdb-table-wrap { overflow-x:auto; border-radius:12px; border:1px solid rgba(11,110,79,.12); background:#fff; }
+    .ppdb-table { width:100%; border-collapse:collapse; font-size:.84rem; }
+    .ppdb-table th, .ppdb-table td { padding:.55rem .65rem; text-align:left; border-bottom:1px solid #e8f0ec; vertical-align:top; }
+    .ppdb-table th { background:#f0f7f3; color:#084C37; font-weight:800; white-space:nowrap; position:sticky; top:0; }
+    .ppdb-table tr:hover td { background:#f8fbf9; }
+    .ppdb-table .mono { font-family:ui-monospace,monospace; font-size:.78rem; }
+    .badge-status { display:inline-block; padding:.15rem .45rem; border-radius:999px; font-size:.72rem; font-weight:800; }
+    .badge-status.baru { background:#e0f2fe; color:#0369a1; }
+    .badge-status.proses { background:#fef3c7; color:#92400e; }
+    .badge-status.diterima { background:#d1fae5; color:#065f46; }
+    .badge-status.ditolak { background:#fee2e2; color:#991b1b; }
+    .ppdb-actions-cell { display:flex; flex-wrap:wrap; gap:.3rem; }
+    .ppdb-actions-cell .btn { padding:.3rem .55rem; font-size:.75rem; }
+    .ppdb-empty { padding:1.25rem; text-align:center; color:var(--muted); }
+    .ppdb-modal-grid { display:grid; grid-template-columns:1fr 1fr; gap:.65rem .85rem; max-height:60vh; overflow:auto; padding-right:4px; }
+    @media (max-width:640px){ .ppdb-modal-grid { grid-template-columns:1fr; } }
+    .ppdb-modal-grid label { margin:0; }
+    .ppdb-modal-grid .full { grid-column:1/-1; }
+    .ppdb-count { font-size:.85rem; color:var(--muted); font-weight:600; }
   </style>
   <link rel="stylesheet" href="../css/lock.css">
 </head>
 <body class="admin-locked"
   data-shlock-mode="lite"
-  data-shlock-domain="darulistiqomah.silverhawk.web.id,localhost,127.0.0.1"
+  data-shlock-domain="sditdaarulistiqomah.sch.id,sditdaarulistiqomah.web.id,darulistiqomah.silverhawk.web.id,localhost,127.0.0.1"
   data-shlock-brand="SDIT Daarul Istiqomah Admin"
   data-shlock-social="https://www.instagram.com/sdit_daarul_istiqomah/"
 >
@@ -529,6 +552,49 @@
       <textarea id="fPpdbNote"></textarea>
     </div>
 
+
+    <div class="admin-card" id="ppdbDataCard">
+      <h2>📋 Data Pendaftaran PPDB</h2>
+      <p class="hint">
+        Daftar calon siswa dari formulir online. Data disimpan di sheet <code>ppdb</code> (Google Sheets).
+        Field selaras Dapodik — unduh CSV untuk impor aplikasi PPDB. Cetak form A4 untuk arsip fisik.
+      </p>
+      <div class="ppdb-toolbar">
+        <input type="search" id="ppdbSearch" class="ppdb-search" placeholder="Cari nama / NIK / no. registrasi…">
+        <select id="ppdbFilterStatus" style="max-width:140px">
+          <option value="">Semua status</option>
+          <option value="Baru">Baru</option>
+          <option value="Proses">Proses</option>
+          <option value="Diterima">Diterima</option>
+          <option value="Ditolak">Ditolak</option>
+        </select>
+        <button class="btn btn-ghost" type="button" id="btnPpdbRefresh" data-tip="Muat ulang daftar dari Google Sheets">↻ Refresh</button>
+        <button class="btn btn-primary" type="button" id="btnPpdbAdd" data-tip="Tambah pendaftaran manual">+ Tambah</button>
+        <button class="btn btn-accent" type="button" id="btnPpdbDownload" data-tip="Unduh semua data (filter aktif) sebagai CSV">⬇ Unduh CSV</button>
+        <span class="ppdb-count" id="ppdbCount"></span>
+      </div>
+      <div class="ppdb-table-wrap">
+        <table class="ppdb-table" id="ppdbTable">
+          <thead>
+            <tr>
+              <th>No. Reg</th>
+              <th>Tanggal</th>
+              <th>Nama Siswa</th>
+              <th>NIK</th>
+              <th>L/P</th>
+              <th>TTL</th>
+              <th>Orang Tua / HP</th>
+              <th>Status</th>
+              <th>Aksi</th>
+            </tr>
+          </thead>
+          <tbody id="ppdbTableBody">
+            <tr><td colspan="9" class="ppdb-empty">Klik Refresh untuk memuat data…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
     <div class="admin-card">
       <h2>Setup database</h2>
       <p class="hint">
@@ -549,7 +615,22 @@
 
   
   <!-- CRUD Editor Modal -->
-  <div id="editModal" class="edit-modal" hidden>
+  
+  <!-- Modal detail / edit PPDB -->
+  <div id="ppdbModal" class="edit-modal" hidden>
+    <div class="edit-modal-inner" style="max-width:720px;width:94vw">
+      <h3 id="ppdbModalTitle" style="margin:0 0 .75rem;color:#084C37">Detail Pendaftaran</h3>
+      <div id="ppdbModalBody"></div>
+      <div class="actions" style="margin-top:1rem;flex-wrap:wrap">
+        <button class="btn btn-accent" type="button" id="btnPpdbModalSave">Simpan Perubahan</button>
+        <button class="btn btn-primary" type="button" id="btnPpdbModalPrint">🖨 Cetak PDF A4</button>
+        <button class="btn btn-ghost" type="button" id="btnPpdbModalDelete" style="color:#b91c1c">Hapus</button>
+        <button class="btn btn-ghost" type="button" id="btnPpdbModalClose">Tutup</button>
+      </div>
+    </div>
+  </div>
+
+<div id="editModal" class="edit-modal" hidden>
     <div class="edit-modal-inner">
       <h2 id="editModalTitle">Edit</h2>
       <div id="editFields"></div>

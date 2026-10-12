@@ -36,7 +36,7 @@ function handleRequest(e, method) {
     }
 
     var token = PropertiesService.getScriptProperties().getProperty('API_TOKEN') || '';
-    var publicActions = { list: 1, getSite: 1, ping: 1, publish: 1, getEngagement: 1, like: 1, comment: 1, submitPpdb: 1, listPpdb: 1 };
+    var publicActions = { list: 1, getSite: 1, ping: 1, publish: 1, getEngagement: 1, like: 1, comment: 1, submitPpdb: 1 };
     if (!publicActions[action]) {
       var clientToken = (e.parameter && e.parameter.token) || body.token || '';
       if (token && clientToken !== token) {
@@ -86,8 +86,13 @@ function handleRequest(e, method) {
       return json_(submitPpdb_(body.data || body));
     }
     if (action === 'listPpdb') {
-      // Admin only ideally — but token already checked if not in public... listPpdb is public for now; restrict later
       return json_({ ok: true, rows: listPpdb_() });
+    }
+    if (action === 'updatePpdb') {
+      return json_(updatePpdb_(body.data || body));
+    }
+    if (action === 'deletePpdb') {
+      return json_(deletePpdb_(body.id || (e.parameter && e.parameter.id)));
     }
 
     return json_({ ok: false, error: 'Unknown action: ' + action });
@@ -463,6 +468,45 @@ function listPpdb_() {
   return rows.reverse();
 }
 
+
+
+function updatePpdb_(data) {
+  if (!data || !data.id) return { ok: false, error: 'id wajib' };
+  var sheet = getSheet_(SHEET_PPDB);
+  ensurePpdbHeaders_(sheet);
+  var values = sheet.getDataRange().getValues();
+  var idCol = 0;
+  for (var i = 1; i < values.length; i++) {
+    if (String(values[i][idCol]) === String(data.id)) {
+      var row = PPDB_HEADERS.map(function (h) {
+        var v = data[h];
+        if (v === undefined || v === null) {
+          // keep existing if not provided
+          var col = PPDB_HEADERS.indexOf(h);
+          return col >= 0 ? values[i][col] : '';
+        }
+        return String(v).slice(0, h === 'user_agent' || h === 'catatan' ? 500 : 200);
+      });
+      sheet.getRange(i + 1, 1, 1, PPDB_HEADERS.length).setValues([row]);
+      return { ok: true, id: data.id, message: 'Data diperbarui' };
+    }
+  }
+  return { ok: false, error: 'ID tidak ditemukan: ' + data.id };
+}
+
+function deletePpdb_(id) {
+  if (!id) return { ok: false, error: 'id wajib' };
+  var sheet = getSheet_(SHEET_PPDB);
+  ensurePpdbHeaders_(sheet);
+  var values = sheet.getDataRange().getValues();
+  for (var i = 1; i < values.length; i++) {
+    if (String(values[i][0]) === String(id)) {
+      sheet.deleteRow(i + 1);
+      return { ok: true, id: id, message: 'Data dihapus' };
+    }
+  }
+  return { ok: false, error: 'ID tidak ditemukan: ' + id };
+}
 
 function setupToken() {
   PropertiesService.getScriptProperties().setProperty('API_TOKEN', 'ganti-dengan-token-rahasia');
