@@ -1428,7 +1428,10 @@
   /* ========== Admin horizontal tabs ========== */
   function setupAdminTabs() {
     const bar = document.getElementById('adminTabs');
-    if (!bar) return;
+    if (!bar) {
+      console.warn('[admin] #adminTabs tidak ditemukan');
+      return;
+    }
 
     function activate(tabId) {
       if (!tabId) return;
@@ -1437,7 +1440,7 @@
         btn.classList.toggle('active', on);
         btn.setAttribute('aria-selected', on ? 'true' : 'false');
       });
-      document.querySelectorAll('.admin-tab-panel').forEach((panel) => {
+      document.querySelectorAll('[data-tab-panel]').forEach((panel) => {
         const on = panel.getAttribute('data-tab-panel') === tabId;
         panel.classList.toggle('active', on);
       });
@@ -1448,9 +1451,16 @@
       } catch (_) {}
     }
 
-    bar.querySelectorAll('.admin-tab').forEach((btn) => {
-      btn.addEventListener('click', () => activate(btn.getAttribute('data-tab')));
-    });
+    // Event delegation — lebih tahan jika DOM diganti
+    if (!bar.dataset.tabsBound) {
+      bar.dataset.tabsBound = '1';
+      bar.addEventListener('click', (e) => {
+        const btn = e.target.closest('.admin-tab');
+        if (!btn || !bar.contains(btn)) return;
+        e.preventDefault();
+        activate(btn.getAttribute('data-tab'));
+      });
+    }
 
     // deep link ?tab=ppdb or ?focus=ppdb
     const params = new URLSearchParams(location.search);
@@ -1549,6 +1559,7 @@
     });
   }
 
+  setupAdminTabs();
   handleDeepLinkEdit();
   if (isAuthed()) focusPpdbSectionIfNeeded();
 
