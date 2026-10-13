@@ -739,6 +739,363 @@
     });
   }
 
+
+  /* ========== Section visibility helpers ========== */
+  function setSectionVisible(id, visible) {
+    const sec = document.getElementById(id);
+    if (!sec) return;
+    if (visible) {
+      sec.hidden = false;
+      sec.removeAttribute('hidden');
+    } else {
+      sec.hidden = true;
+      sec.setAttribute('hidden', '');
+    }
+  }
+
+  function updateShowIfNav(flags) {
+    let anyMore = false;
+    document.querySelectorAll('[data-show-if]').forEach((a) => {
+      const key = a.getAttribute('data-show-if');
+      const on = !!flags[key];
+      a.style.display = on ? '' : 'none';
+      if (on) a.removeAttribute('hidden');
+      else a.setAttribute('hidden', '');
+      if (on) anyMore = true;
+    });
+    const more = document.getElementById('navMore');
+    if (more) {
+      if (anyMore) {
+        more.hidden = false;
+        more.removeAttribute('hidden');
+      } else {
+        more.hidden = true;
+        more.setAttribute('hidden', '');
+        more.classList.remove('open');
+      }
+    }
+  }
+
+  function hasText(v) {
+    return !!(v && String(v).trim());
+  }
+
+  function renderVisionMission(vm) {
+    vm = vm || {};
+    const vision = (vm.vision || '').trim();
+    const mission = Array.isArray(vm.mission) ? vm.mission.filter((m) => hasText(m)) : [];
+    const motto = (vm.motto || '').trim();
+    const show = !!(vision || mission.length || motto);
+    setSectionVisible('visi', show);
+    if (!show) return false;
+
+    const vCard = document.getElementById('visionCard');
+    const mCard = document.getElementById('missionCard');
+    const vText = document.getElementById('visionText');
+    const mList = document.getElementById('missionList');
+    const mottoEl = document.getElementById('mottoText');
+
+    if (vCard && vText) {
+      if (vision) {
+        vText.textContent = vision;
+        vCard.hidden = false;
+      } else vCard.hidden = true;
+    }
+    if (mCard && mList) {
+      if (mission.length) {
+        mList.innerHTML = '';
+        mission.forEach((m) => mList.appendChild(el('li', {}, [m])));
+        mCard.hidden = false;
+      } else mCard.hidden = true;
+    }
+    if (mottoEl) {
+      if (motto) {
+        mottoEl.textContent = '“' + motto + '”';
+        mottoEl.hidden = false;
+      } else mottoEl.hidden = true;
+    }
+    return true;
+  }
+
+  function renderLeadership(list) {
+    list = (list || []).filter((x) => hasText(x.name));
+    setSectionVisible('pimpinan', list.length > 0);
+    const grid = document.getElementById('leadershipGrid');
+    if (!grid) return list.length > 0;
+    grid.innerHTML = '';
+    list.forEach((p) => {
+      const av = el('div', { class: 'avatar' });
+      if (hasText(p.photo)) {
+        av.appendChild(el('img', { src: p.photo, alt: p.name || '' }));
+      } else {
+        av.textContent = (p.name || '?').charAt(0).toUpperCase();
+      }
+      grid.appendChild(el('article', { class: 'card person-card' }, [
+        av,
+        el('div', { class: 'role' }, [p.role || '']),
+        el('h3', {}, [p.name || '']),
+        hasText(p.bio) ? el('p', { class: 'bio' }, [p.bio]) : null
+      ].filter(Boolean)));
+    });
+    return list.length > 0;
+  }
+
+  function renderFacilities(list) {
+    list = (list || []).filter((x) => hasText(x.name));
+    setSectionVisible('fasilitas', list.length > 0);
+    const grid = document.getElementById('facilitiesGrid');
+    if (!grid) return list.length > 0;
+    grid.innerHTML = '';
+    list.forEach((f) => {
+      const kids = [];
+      if (hasText(f.image)) kids.push(el('img', { src: f.image, alt: f.name || '' }));
+      if (hasText(f.icon)) kids.push(el('div', { class: 'icon' }, [f.icon]));
+      kids.push(el('h3', {}, [f.name || '']));
+      if (hasText(f.desc)) kids.push(el('p', {}, [f.desc]));
+      grid.appendChild(el('article', { class: 'card facility-card' }, kids));
+    });
+    return list.length > 0;
+  }
+
+  function renderTeachers(list) {
+    list = (list || []).filter((x) => hasText(x.name) && x.active !== false);
+    setSectionVisible('guru', list.length > 0);
+    const grid = document.getElementById('teachersGrid');
+    if (!grid) return list.length > 0;
+    grid.innerHTML = '';
+    list.forEach((t) => {
+      const av = el('div', { class: 'avatar' });
+      if (hasText(t.photo)) av.appendChild(el('img', { src: t.photo, alt: t.name || '' }));
+      else av.textContent = (t.name || '?').charAt(0).toUpperCase();
+      const role = [t.role, t.subject].filter(hasText).join(' · ');
+      grid.appendChild(el('article', { class: 'card person-card' }, [
+        av,
+        role ? el('div', { class: 'role' }, [role]) : null,
+        el('h3', {}, [t.name || ''])
+      ].filter(Boolean)));
+    });
+    return list.length > 0;
+  }
+
+  function renderAchievements(list) {
+    list = (list || []).filter((x) => hasText(x.title));
+    setSectionVisible('prestasi', list.length > 0);
+    const grid = document.getElementById('achievementsGrid');
+    if (!grid) return list.length > 0;
+    grid.innerHTML = '';
+    list.forEach((a) => {
+      const kids = [];
+      if (hasText(a.year) || hasText(a.level)) {
+        kids.push(el('span', { class: 'year-badge' }, [[a.year, a.level].filter(hasText).join(' · ')]));
+      }
+      kids.push(el('h3', {}, [a.title || '']));
+      if (hasText(a.desc)) kids.push(el('p', {}, [a.desc]));
+      grid.appendChild(el('article', { class: 'card achieve-card' }, kids));
+    });
+    return list.length > 0;
+  }
+
+  function renderCalendar(list) {
+    list = (list || []).filter((x) => hasText(x.title));
+    setSectionVisible('kalender', list.length > 0);
+    const box = document.getElementById('calendarList');
+    if (!box) return list.length > 0;
+    box.innerHTML = '';
+    list.forEach((c) => {
+      const dateStr = [c.date, c.endDate].filter(hasText).join(' – ');
+      box.appendChild(el('div', { class: 'calendar-item' }, [
+        el('div', {}, [
+          el('div', { class: 'date' }, [dateStr || '—']),
+          hasText(c.type) ? el('div', { class: 'type' }, [c.type]) : null
+        ].filter(Boolean)),
+        el('div', {}, [
+          el('strong', {}, [c.title || '']),
+          hasText(c.desc) ? el('p', { style: 'margin:.35rem 0 0;color:var(--muted);font-size:.9rem' }, [c.desc]) : null
+        ].filter(Boolean))
+      ]));
+    });
+    return list.length > 0;
+  }
+
+  function renderFees(fees) {
+    fees = fees || {};
+    const items = (fees.items || []).filter((x) => hasText(x.name));
+    const show = fees.enabled === true && (items.length > 0 || hasText(fees.note));
+    setSectionVisible('biaya', show);
+    if (!show) return false;
+    const title = document.getElementById('feesTitle');
+    const note = document.getElementById('feesNote');
+    const wrap = document.getElementById('feesTableWrap');
+    if (title && hasText(fees.title)) title.textContent = fees.title;
+    if (note) note.textContent = fees.note || '';
+    if (wrap) {
+      wrap.innerHTML = '';
+      if (items.length) {
+        const table = el('table', { class: 'fees-table' });
+        table.innerHTML = '<thead><tr><th>Komponen</th><th>Nominal</th><th>Keterangan</th></tr></thead>';
+        const tb = document.createElement('tbody');
+        items.forEach((it) => {
+          const tr = document.createElement('tr');
+          tr.innerHTML = '<td>' + escapeHtml(it.name) + '</td><td class="amount">' +
+            escapeHtml(it.amount || '—') + (hasText(it.period) ? ' <span style="font-weight:500;color:var(--muted)">/ ' + escapeHtml(it.period) + '</span>' : '') +
+            '</td><td>' + escapeHtml(it.note || '') + '</td>';
+          tb.appendChild(tr);
+        });
+        table.appendChild(tb);
+        wrap.appendChild(table);
+      }
+    }
+    return true;
+  }
+
+  function escapeHtml(str) {
+    return String(str == null ? '' : str)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  function renderComplaint(c, school) {
+    c = c || {};
+    const card = document.getElementById('complaintCard');
+    const note = document.getElementById('complaintNote');
+    const actions = document.getElementById('complaintActions');
+    const show = c.enabled === true && (hasText(c.email) || hasText(c.whatsapp) || hasText(c.note));
+    if (!card) return;
+    if (!show) { card.hidden = true; return; }
+    card.hidden = false;
+    if (note) note.textContent = c.note || 'Sampaikan saran atau pengaduan melalui kanal berikut.';
+    if (actions) {
+      actions.innerHTML = '';
+      const wa = hasText(c.whatsapp) ? c.whatsapp : (school && school.whatsapp);
+      const em = hasText(c.email) ? c.email : (school && school.email);
+      if (wa) {
+        actions.appendChild(el('a', {
+          class: 'btn btn-accent', href: 'https://wa.me/' + String(wa).replace(/\D/g, ''),
+          target: '_blank', rel: 'noopener'
+        }, ['WhatsApp']));
+      }
+      if (em) {
+        actions.appendChild(el('a', { class: 'btn btn-ghost', href: 'mailto:' + em }, ['Email']));
+      }
+    }
+  }
+
+  function renderExtendedSchool(school) {
+    school = school || {};
+    const set = (id, val, asHtml) => {
+      const n = document.getElementById(id);
+      if (!n) return;
+      if (!hasText(val)) { n.hidden = true; return; }
+      n.hidden = false;
+      if (asHtml) n.innerHTML = val;
+      else n.textContent = val;
+    };
+    set('schoolHours', hasText(school.jamOperasional) ? 'Jam layanan: ' + school.jamOperasional : '');
+    set('schoolPrincipal', hasText(school.principal) ? 'Kepala Sekolah: ' + school.principal : '');
+    set('schoolYayasan', hasText(school.yayasan) ? 'Naungan: ' + school.yayasan : '');
+    const links = [];
+    if (hasText(school.npsn)) {
+      links.push('<a href="https://referensi.data.kemdikbud.go.id/tabs.php?npsn=' + encodeURIComponent(school.npsn) + '" target="_blank" rel="noopener">Cek NPSN ' + escapeHtml(school.npsn) + '</a>');
+    }
+    if (hasText(school.sekolahKitaUrl)) {
+      links.push('<a href="' + escapeHtml(school.sekolahKitaUrl) + '" target="_blank" rel="noopener">Profil Sekolah Kita</a>');
+    }
+    set('officialLinks', links.length ? links.join(' · ') : '', true);
+  }
+
+  function renderPpdbExtras(ppdb, faq) {
+    ppdb = ppdb || {};
+    const quota = document.getElementById('ppdbQuota');
+    if (quota) {
+      if (hasText(ppdb.quota)) {
+        quota.textContent = 'Kuota: ' + ppdb.quota;
+        quota.hidden = false;
+      } else quota.hidden = true;
+    }
+    const side = document.getElementById('ppdbSideNote');
+    if (side && hasText(ppdb.flowNote)) side.textContent = ppdb.flowNote;
+
+    const steps = (ppdb.steps || []).filter((s) => hasText(s.title));
+    const stepsWrap = document.getElementById('ppdbStepsWrap');
+    const stepsOl = document.getElementById('ppdbSteps');
+    if (stepsWrap && stepsOl) {
+      if (steps.length) {
+        stepsOl.innerHTML = '';
+        steps.forEach((s) => {
+          const li = document.createElement('li');
+          li.innerHTML = '<strong>' + escapeHtml(s.title) + '</strong>' +
+            (hasText(s.desc) ? ' — ' + escapeHtml(s.desc) : '');
+          stepsOl.appendChild(li);
+        });
+        stepsWrap.hidden = false;
+      } else stepsWrap.hidden = true;
+    }
+
+    const schedule = (ppdb.schedule || []).filter((s) => hasText(s.label) || hasText(s.date));
+    const schWrap = document.getElementById('ppdbScheduleWrap');
+    const schBox = document.getElementById('ppdbSchedule');
+    if (schWrap && schBox) {
+      if (schedule.length) {
+        schBox.innerHTML = '';
+        schedule.forEach((s) => {
+          schBox.appendChild(el('div', { class: 'calendar-item' }, [
+            el('div', { class: 'date' }, [s.date || '—']),
+            el('div', {}, [
+              el('strong', {}, [s.label || '']),
+              hasText(s.note) ? el('p', { style: 'margin:.35rem 0 0;color:var(--muted);font-size:.9rem' }, [s.note]) : null
+            ].filter(Boolean))
+          ]));
+        });
+        schWrap.hidden = false;
+      } else schWrap.hidden = true;
+    }
+
+    const faqList = (faq || []).filter((f) => hasText(f.q) && hasText(f.a));
+    const faqWrap = document.getElementById('ppdbFaqWrap');
+    const faqBox = document.getElementById('ppdbFaq');
+    if (faqWrap && faqBox) {
+      if (faqList.length) {
+        faqBox.innerHTML = '';
+        faqList.forEach((f) => {
+          const d = document.createElement('details');
+          d.className = 'faq-item';
+          d.innerHTML = '<summary>' + escapeHtml(f.q) + '</summary><p>' + escapeHtml(f.a) + '</p>';
+          faqBox.appendChild(d);
+        });
+        faqWrap.hidden = false;
+      } else faqWrap.hidden = true;
+    }
+
+    const priv = document.getElementById('ppdbPrivacyNote');
+    if (priv) {
+      if (hasText(ppdb.privacyNote)) {
+        priv.textContent = ppdb.privacyNote;
+        priv.hidden = false;
+      } else {
+        priv.textContent = 'Data yang Anda kirim digunakan untuk keperluan PPDB dan pelaporan pendidikan sesuai ketentuan. Data tidak dipublikasikan.';
+        priv.hidden = false;
+      }
+    }
+  }
+
+  function renderAllOptional(data) {
+    const flags = {
+      visionMission: renderVisionMission(data.visionMission),
+      leadership: renderLeadership(data.leadership),
+      facilities: renderFacilities(data.facilities),
+      teachers: renderTeachers(data.teachers),
+      achievements: renderAchievements(data.achievements),
+      calendar: renderCalendar(data.calendar),
+      fees: renderFees(data.fees)
+    };
+    // leadership not in nav - optional
+    flags.visionMission = flags.visionMission;
+    renderExtendedSchool(data.school);
+    renderComplaint(data.complaint, data.school);
+    renderPpdbExtras(data.ppdb, data.faq);
+    updateShowIfNav(flags);
+  }
+
   function renderSchool(school, ppdb) {
     const setText = (id, val) => {
       const n = document.getElementById(id);
@@ -1146,8 +1503,30 @@
     const links = document.getElementById('navLinks');
     toggle?.addEventListener('click', () => links?.classList.toggle('open'));
     links?.querySelectorAll('a').forEach((a) => {
-      a.addEventListener('click', () => links.classList.remove('open'));
+      a.addEventListener('click', () => {
+        links.classList.remove('open');
+        document.getElementById('navMore')?.classList.remove('open');
+        const btn = document.getElementById('navMoreBtn');
+        if (btn) btn.setAttribute('aria-expanded', 'false');
+      });
     });
+
+    const more = document.getElementById('navMore');
+    const moreBtn = document.getElementById('navMoreBtn');
+    if (more && moreBtn) {
+      moreBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const open = more.classList.toggle('open');
+        moreBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+      });
+      document.addEventListener('click', (e) => {
+        if (!more.contains(e.target)) {
+          more.classList.remove('open');
+          moreBtn.setAttribute('aria-expanded', 'false');
+        }
+      });
+    }
   }
 
 

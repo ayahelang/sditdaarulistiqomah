@@ -204,6 +204,7 @@
     data = j.data;
     if (!data.media) data.media = [];
     if (!data.announcements) data.announcements = [];
+    ensureSiteArrays(data);
     fillForm();
     status('✓ Data dimuat dari Google Sheets');
     return true;
@@ -214,6 +215,7 @@
     data = await res.json();
     if (!data.media) data.media = [];
     if (!data.announcements) data.announcements = [];
+    ensureSiteArrays(data);
     fillForm();
     status('Data dimuat dari data/site.json (fallback lokal)');
   }
@@ -242,32 +244,96 @@
     loadPpdbList().catch(() => {});
   }
 
+  function ensureSiteArrays(d) {
+    if (!d) return;
+    ['media','announcements','leadership','facilities','teachers','achievements','calendar','faq'].forEach((k) => {
+      if (!Array.isArray(d[k])) d[k] = [];
+    });
+    if (!d.visionMission) d.visionMission = { vision: '', mission: [], motto: '' };
+    if (!Array.isArray(d.visionMission.mission)) d.visionMission.mission = [];
+    if (!d.fees) d.fees = { enabled: false, title: 'Informasi Biaya Pendidikan', note: '', items: [] };
+    if (!Array.isArray(d.fees.items)) d.fees.items = [];
+    if (!d.complaint) d.complaint = { enabled: false, email: '', whatsapp: '', note: '' };
+    if (!d.ppdb) d.ppdb = {};
+    if (!Array.isArray(d.ppdb.steps)) d.ppdb.steps = [];
+    if (!Array.isArray(d.ppdb.schedule)) d.ppdb.schedule = [];
+    if (!Array.isArray(d.ppdb.requirements)) d.ppdb.requirements = [];
+  }
+
   function fillForm() {
     if (!data) return;
+    ensureSiteArrays(data);
     const s = data.school || {};
-    $('fName').value = s.name || '';
-    $('fTagline').value = s.tagline || '';
-    $('fAddress').value = s.address || '';
-    $('fEmail').value = s.email || '';
-    $('fWa').value = s.whatsapp || '';
+    const set = (id, v) => { const n = $(id); if (n) n.value = v == null ? '' : String(v); };
+    set('fName', s.name || '');
+    set('fTagline', s.tagline || '');
+    set('fAddress', s.address || '');
+    set('fEmail', s.email || '');
+    set('fWa', s.whatsapp || '');
+    set('fPrincipal', s.principal || '');
+    set('fYayasan', s.yayasan || '');
+    set('fHours', s.jamOperasional || '');
+    set('fSekolahKita', s.sekolahKitaUrl || '');
+    set('fIzin', s.izinOperasional || '');
+    const vm = data.visionMission || {};
+    set('fVision', vm.vision || '');
+    set('fMission', (vm.mission || []).join('\n'));
+    set('fMotto', vm.motto || '');
+    const c = data.complaint || {};
+    set('fComplaintEnabled', String(!!c.enabled));
+    set('fComplaintNote', c.note || '');
+    set('fComplaintEmail', c.email || '');
+    set('fComplaintWa', c.whatsapp || '');
     const p = data.ppdb || {};
-    $('fPpdbYear').value = p.year || '';
-    $('fPpdbOpen').value = String(p.open !== false);
-    $('fPpdbNote').value = p.note || '';
+    set('fPpdbYear', p.year || '');
+    set('fPpdbOpen', String(p.open !== false));
+    set('fPpdbNote', p.note || '');
+    set('fPpdbQuota', p.quota || '');
+    set('fPpdbFlowNote', p.flowNote || '');
+    set('fPpdbPrivacy', p.privacyNote || '');
+    set('fPpdbReqs', (p.requirements || []).join('\n'));
+    const fees = data.fees || {};
+    set('fFeesEnabled', String(!!fees.enabled));
+    set('fFeesTitle', fees.title || 'Informasi Biaya Pendidikan');
+    set('fFeesNote', fees.note || '');
     renderLists();
   }
 
   function readForm() {
     if (!data.school) data.school = {};
     if (!data.ppdb) data.ppdb = {};
-    data.school.name = $('fName').value.trim();
-    data.school.tagline = $('fTagline').value.trim();
-    data.school.address = $('fAddress').value.trim();
-    data.school.email = $('fEmail').value.trim();
-    data.school.whatsapp = $('fWa').value.trim();
-    data.ppdb.year = $('fPpdbYear').value.trim();
-    data.ppdb.open = $('fPpdbOpen').value === 'true';
-    data.ppdb.note = $('fPpdbNote').value.trim();
+    if (!data.visionMission) data.visionMission = { vision: '', mission: [], motto: '' };
+    if (!data.fees) data.fees = { enabled: false, title: '', note: '', items: data.fees && data.fees.items || [] };
+    if (!data.complaint) data.complaint = {};
+    const g = (id) => { const n = $(id); return n ? n.value.trim() : ''; };
+    data.school.name = g('fName');
+    data.school.tagline = g('fTagline');
+    data.school.address = g('fAddress');
+    data.school.email = g('fEmail');
+    data.school.whatsapp = g('fWa');
+    data.school.principal = g('fPrincipal');
+    data.school.yayasan = g('fYayasan');
+    data.school.jamOperasional = g('fHours');
+    data.school.sekolahKitaUrl = g('fSekolahKita');
+    data.school.izinOperasional = g('fIzin');
+    data.visionMission.vision = g('fVision');
+    data.visionMission.mission = g('fMission').split('\n').map((x) => x.trim()).filter(Boolean);
+    data.visionMission.motto = g('fMotto');
+    data.complaint.enabled = g('fComplaintEnabled') === 'true';
+    data.complaint.note = g('fComplaintNote');
+    data.complaint.email = g('fComplaintEmail');
+    data.complaint.whatsapp = g('fComplaintWa');
+    data.ppdb.year = g('fPpdbYear');
+    data.ppdb.open = g('fPpdbOpen') === 'true';
+    data.ppdb.note = g('fPpdbNote');
+    data.ppdb.quota = g('fPpdbQuota');
+    data.ppdb.flowNote = g('fPpdbFlowNote');
+    data.ppdb.privacyNote = g('fPpdbPrivacy');
+    data.ppdb.requirements = g('fPpdbReqs').split('\n').map((x) => x.trim()).filter(Boolean);
+    if (!Array.isArray(data.fees.items)) data.fees.items = [];
+    data.fees.enabled = g('fFeesEnabled') === 'true';
+    data.fees.title = g('fFeesTitle') || 'Informasi Biaya Pendidikan';
+    data.fees.note = g('fFeesNote');
   }
 
   function escapeHtml(str) {
@@ -330,8 +396,78 @@
       { key: 'body', label: 'Isi', type: 'textarea' },
       { key: 'mode', label: 'Mode', type: 'text' },
       { key: 'image', label: 'Gambar', type: 'text' }
+    ],
+    leadership: [
+      { key: 'name', label: 'Nama', type: 'text' },
+      { key: 'role', label: 'Jabatan', type: 'text' },
+      { key: 'photo', label: 'URL Foto', type: 'text' },
+      { key: 'bio', label: 'Bio singkat', type: 'textarea' }
+    ],
+    facilities: [
+      { key: 'name', label: 'Nama fasilitas', type: 'text' },
+      { key: 'icon', label: 'Emoji ikon', type: 'text' },
+      { key: 'image', label: 'URL gambar', type: 'text' },
+      { key: 'desc', label: 'Deskripsi', type: 'textarea' }
+    ],
+    teachers: [
+      { key: 'name', label: 'Nama', type: 'text' },
+      { key: 'role', label: 'Peran / jabatan', type: 'text' },
+      { key: 'subject', label: 'Mapel / bidang', type: 'text' },
+      { key: 'photo', label: 'URL foto', type: 'text' }
+    ],
+    achievements: [
+      { key: 'title', label: 'Judul prestasi', type: 'text' },
+      { key: 'year', label: 'Tahun', type: 'text' },
+      { key: 'level', label: 'Tingkat', type: 'text' },
+      { key: 'desc', label: 'Keterangan', type: 'textarea' }
+    ],
+    calendar: [
+      { key: 'title', label: 'Judul agenda', type: 'text' },
+      { key: 'date', label: 'Tanggal mulai', type: 'text' },
+      { key: 'endDate', label: 'Tanggal selesai', type: 'text' },
+      { key: 'type', label: 'Jenis', type: 'text' },
+      { key: 'desc', label: 'Keterangan', type: 'textarea' }
+    ],
+    faq: [
+      { key: 'q', label: 'Pertanyaan', type: 'text' },
+      { key: 'a', label: 'Jawaban', type: 'textarea' }
+    ],
+    'ppdb.steps': [
+      { key: 'title', label: 'Nama tahap', type: 'text' },
+      { key: 'desc', label: 'Keterangan', type: 'textarea' }
+    ],
+    'ppdb.schedule': [
+      { key: 'label', label: 'Label kegiatan', type: 'text' },
+      { key: 'date', label: 'Tanggal / rentang', type: 'text' },
+      { key: 'note', label: 'Catatan', type: 'textarea' }
+    ],
+    'fees.items': [
+      { key: 'name', label: 'Komponen biaya', type: 'text' },
+      { key: 'amount', label: 'Nominal', type: 'text' },
+      { key: 'period', label: 'Periode', type: 'text' },
+      { key: 'note', label: 'Keterangan', type: 'textarea' }
     ]
   };
+
+  function getListRef(type) {
+    if (type === 'fees.items') {
+      if (!data.fees) data.fees = { enabled: false, title: '', note: '', items: [] };
+      if (!Array.isArray(data.fees.items)) data.fees.items = [];
+      return data.fees.items;
+    }
+    if (type === 'ppdb.steps') {
+      if (!data.ppdb) data.ppdb = {};
+      if (!Array.isArray(data.ppdb.steps)) data.ppdb.steps = [];
+      return data.ppdb.steps;
+    }
+    if (type === 'ppdb.schedule') {
+      if (!data.ppdb) data.ppdb = {};
+      if (!Array.isArray(data.ppdb.schedule)) data.ppdb.schedule = [];
+      return data.ppdb.schedule;
+    }
+    if (!Array.isArray(data[type])) data[type] = [];
+    return data[type];
+  }
 
   function openEditor(type, index) {
     if (type === 'announcements') {
@@ -339,7 +475,7 @@
       return;
     }
     editCtx = { type, index };
-    const list = data[type] || [];
+    const list = getListRef(type);
     const item = index >= 0 ? Object.assign({}, list[index]) : {};
     const schema = SCHEMAS[type] || [];
     $('editModalTitle').textContent = index >= 0 ? 'Edit ' + type : 'Tambah ' + type;
@@ -374,14 +510,14 @@
     if (!editCtx) return;
     const { type, index } = editCtx;
     const schema = SCHEMAS[type] || [];
-    const item = index >= 0 ? Object.assign({}, (data[type] || [])[index]) : { id: type[0] + Date.now() };
+    const list = getListRef(type);
+    const item = index >= 0 ? Object.assign({}, list[index]) : { id: String(type).replace(/\W/g, '').slice(0, 6) + Date.now() };
     schema.forEach((f) => {
       const el = document.getElementById('ef_' + f.key);
       if (el) item[f.key] = el.value.trim();
     });
-    if (!data[type]) data[type] = [];
-    if (index >= 0) data[type][index] = item;
-    else data[type].unshift(item);
+    if (index >= 0) list[index] = item;
+    else list.unshift(item);
     closeEditor();
     renderLists();
     status('Perubahan disimpan di form. Klik "Simpan ke Browser" agar permanen di sesi ini.');
@@ -410,8 +546,8 @@
   }
 
   async function deleteItem(type, index) {
-    if (!(await themedConfirm('Hapus item ini? Tindakan ini hanya di memori sampai Anda klik Simpan ke Browser.'))) return;
-    data[type].splice(index, 1);
+    if (!(await themedConfirm('Hapus item ini? Simpan ke Google Sheets agar perubahan permanen.'))) return;
+    getListRef(type).splice(index, 1);
     renderLists();
     status('Item dihapus. Klik Simpan ke Browser.');
   }
@@ -633,8 +769,41 @@
     });
   }
 
+  function renderExtraLists() {
+    function simpleList(boxId, type, titleFn) {
+      const box = $(boxId);
+      if (!box) return;
+      box.innerHTML = '';
+      const list = getListRef(type);
+      if (!list.length) {
+        box.innerHTML = '<p class="hint">Belum ada data. Klik tambah, lalu Simpan ke Google Sheets.</p>';
+        return;
+      }
+      list.forEach((item, i) => {
+        const row = document.createElement('div');
+        row.className = 'list-item';
+        const mid = document.createElement('div');
+        mid.className = 'li-info';
+        mid.innerHTML = '<strong>' + escapeHtml(titleFn(item)) + '</strong>';
+        row.appendChild(mid);
+        row.appendChild(rowActions(type, i));
+        box.appendChild(row);
+      });
+    }
+    simpleList('leadershipList', 'leadership', (x) => (x.name || 'Tanpa nama') + (x.role ? ' — ' + x.role : ''));
+    simpleList('facilitiesList', 'facilities', (x) => x.name || 'Fasilitas');
+    simpleList('teachersList', 'teachers', (x) => (x.name || 'Guru') + (x.subject ? ' · ' + x.subject : ''));
+    simpleList('achievementsList', 'achievements', (x) => (x.title || 'Prestasi') + (x.year ? ' (' + x.year + ')' : ''));
+    simpleList('calendarListAdmin', 'calendar', (x) => (x.title || 'Agenda') + (x.date ? ' — ' + x.date : ''));
+    simpleList('faqList', 'faq', (x) => x.q || 'FAQ');
+    simpleList('ppdbStepsList', 'ppdb.steps', (x) => x.title || 'Tahap');
+    simpleList('ppdbScheduleList', 'ppdb.schedule', (x) => (x.label || 'Jadwal') + (x.date ? ' — ' + x.date : ''));
+    simpleList('feesList', 'fees.items', (x) => (x.name || 'Biaya') + (x.amount ? ' · ' + x.amount : ''));
+  }
+
   function renderLists() {
     renderAnnList();
+    renderExtraLists();
 
     // Media
     const mBox = $('mediaList');
@@ -911,6 +1080,16 @@
   $('btnEditCancel').onclick = closeEditor;
   $('editModal').addEventListener('click', (e) => { if (e.target.id === 'editModal') closeEditor(); });
 
+  const _bindAdd = (id, type) => { const b = $(id); if (b) b.onclick = () => openEditor(type, -1); };
+  _bindAdd('btnAddLeadership', 'leadership');
+  _bindAdd('btnAddFacility', 'facilities');
+  _bindAdd('btnAddTeacher', 'teachers');
+  _bindAdd('btnAddAchievement', 'achievements');
+  _bindAdd('btnAddCalendar', 'calendar');
+  _bindAdd('btnAddFaq', 'faq');
+  _bindAdd('btnAddPpdbStep', 'ppdb.steps');
+  _bindAdd('btnAddPpdbSchedule', 'ppdb.schedule');
+  _bindAdd('btnAddFee', 'fees.items');
   $('btnAddCarousel').onclick = () => openEditor('carousel', -1);
   $('btnAddArticle').onclick = () => openEditor('articles', -1);
   $('btnAddGallery').onclick = () => openEditor('gallery', -1);

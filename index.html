@@ -58,6 +58,19 @@
         <a href="#galeri">Galeri</a>
         <a href="#kegiatan">Kegiatan</a>
         <a href="#ppdb">PPDB</a>
+        <div class="nav-dropdown" id="navMore" hidden>
+          <button type="button" class="nav-dropdown-toggle" id="navMoreBtn" aria-expanded="false" aria-haspopup="true">
+            Info lainnya <span class="nav-caret" aria-hidden="true">▾</span>
+          </button>
+          <div class="nav-dropdown-menu" id="navMoreMenu" role="menu">
+            <a href="#visi" data-show-if="visionMission" role="menuitem">Visi &amp; Misi</a>
+            <a href="#fasilitas" data-show-if="facilities" role="menuitem">Fasilitas</a>
+            <a href="#guru" data-show-if="teachers" role="menuitem">Guru</a>
+            <a href="#prestasi" data-show-if="achievements" role="menuitem">Prestasi</a>
+            <a href="#kalender" data-show-if="calendar" role="menuitem">Kalender</a>
+            <a href="#biaya" data-show-if="fees" role="menuitem">Biaya</a>
+          </div>
+        </div>
         <a href="#kontak">Kontak</a>
         <a class="btn btn-primary nav-cta" href="#ppdb">Daftar</a>
       </nav>
@@ -171,12 +184,90 @@
       </div>
     </section>
 
+
+    <!-- Visi & Misi: disembunyikan jika kosong -->
+    <section id="visi" class="sec-optional" hidden>
+      <div class="container">
+        <div class="section-head">
+          <div class="label">Landasan</div>
+          <h2>Visi &amp; Misi</h2>
+        </div>
+        <div class="vm-grid">
+          <article class="card vm-card" id="visionCard" hidden>
+            <h3>Visi</h3>
+            <p id="visionText"></p>
+          </article>
+          <article class="card vm-card" id="missionCard" hidden>
+            <h3>Misi</h3>
+            <ul id="missionList"></ul>
+          </article>
+        </div>
+        <p class="vm-motto" id="mottoText" hidden></p>
+      </div>
+    </section>
+
+    <!-- Pimpinan -->
+    <section id="pimpinan" class="sec-optional" style="background:#fff;" hidden>
+      <div class="container">
+        <div class="section-head">
+          <div class="label">Kepemimpinan</div>
+          <h2>Pimpinan Sekolah</h2>
+        </div>
+        <div class="grid-3" id="leadershipGrid"></div>
+      </div>
+    </section>
+
+    <!-- Fasilitas -->
+    <section id="fasilitas" class="sec-optional" hidden>
+      <div class="container">
+        <div class="section-head">
+          <div class="label">Sarana</div>
+          <h2>Fasilitas Sekolah</h2>
+        </div>
+        <div class="grid-3" id="facilitiesGrid"></div>
+      </div>
+    </section>
+
+    <!-- Guru -->
+    <section id="guru" class="sec-optional" style="background:#fff;" hidden>
+      <div class="container">
+        <div class="section-head">
+          <div class="label">Tenaga Pendidik</div>
+          <h2>Guru &amp; Staff</h2>
+        </div>
+        <div class="grid-3" id="teachersGrid"></div>
+      </div>
+    </section>
+
+    <!-- Prestasi -->
+    <section id="prestasi" class="sec-optional" hidden>
+      <div class="container">
+        <div class="section-head">
+          <div class="label">Capaian</div>
+          <h2>Prestasi</h2>
+        </div>
+        <div class="grid-3" id="achievementsGrid"></div>
+      </div>
+    </section>
+
+    <!-- Kalender -->
+    <section id="kalender" class="sec-optional" style="background:#fff;" hidden>
+      <div class="container">
+        <div class="section-head">
+          <div class="label">Agenda</div>
+          <h2>Kalender Akademik</h2>
+        </div>
+        <div class="calendar-list" id="calendarList"></div>
+      </div>
+    </section>
+
     <section id="ppdb">
       <div class="container">
         <div class="ppdb-box">
           <div>
             <h2 id="ppdbYear">PPDB Tahun Ajaran 2026/2027</h2>
             <p id="ppdbNote">Pendaftaran online dibuka. Isi formulir di bawah ini. Data siap diekspor untuk Dapodik &amp; aplikasi PPDB.</p>
+            <p id="ppdbQuota" class="ppdb-quota" hidden></p>
             <ul id="ppdbReqs"></ul>
             <div class="ppdb-actions">
               <button type="button" class="btn btn-accent" id="btnShowPpdbForm">Isi Formulir Online</button>
@@ -186,8 +277,21 @@
           </div>
           <div style="text-align:center;">
             <div style="font-size:3rem;margin-bottom:.5rem;">📝</div>
-            <p style="opacity:.9;">Siapkan berkas (Akta, KK, KTP) dan lengkapi formulir. Observasi &amp; wawancara dijadwalkan oleh panitia.</p>
+            <p style="opacity:.9;" id="ppdbSideNote">Siapkan berkas (Akta, KK, KTP) dan lengkapi formulir. Observasi &amp; wawancara dijadwalkan oleh panitia.</p>
           </div>
+        </div>
+
+        <div id="ppdbStepsWrap" class="ppdb-extra" hidden>
+          <h3 class="ppdb-extra-title">Alur Pendaftaran</h3>
+          <ol class="ppdb-steps" id="ppdbSteps"></ol>
+        </div>
+        <div id="ppdbScheduleWrap" class="ppdb-extra" hidden>
+          <h3 class="ppdb-extra-title">Jadwal PPDB</h3>
+          <div class="calendar-list" id="ppdbSchedule"></div>
+        </div>
+        <div id="ppdbFaqWrap" class="ppdb-extra" hidden>
+          <h3 class="ppdb-extra-title">FAQ PPDB</h3>
+          <div class="faq-list" id="ppdbFaq"></div>
         </div>
 
         <!-- Formulir PPDB Online — field selaras Dapodik -->
@@ -501,6 +605,7 @@
               </div>
             </fieldset>
 
+            <p id="ppdbPrivacyNote" class="ppdb-privacy" hidden></p>
             <div class="ppdb-consent">
               <label class="checkbox-label">
                 <input type="checkbox" id="persetujuan" name="persetujuan" required>
@@ -518,6 +623,18 @@
       </div>
     </section>
 
+
+    <section id="biaya" class="sec-optional" hidden>
+      <div class="container">
+        <div class="section-head">
+          <div class="label">Transparansi</div>
+          <h2 id="feesTitle">Informasi Biaya Pendidikan</h2>
+          <p id="feesNote"></p>
+        </div>
+        <div class="fees-table-wrap" id="feesTableWrap"></div>
+      </div>
+    </section>
+
     <section id="kontak" style="background:#fff;">
       <div class="container">
         <div class="section-head">
@@ -531,9 +648,15 @@
             <p id="schoolAddress">Jl. Manunggal RT.03/12, Tajur Halang, Kec. Tajurhalang, Kab. Bogor</p>
             <a id="schoolEmail" href="mailto:darulistiqomahsdit@gmail.com">darulistiqomahsdit@gmail.com</a>
             <a id="igLink" href="https://www.instagram.com/sdit_daarul_istiqomah/" target="_blank" rel="noopener">Instagram @sdit_daarul_istiqomah</a>
-            <p style="margin-top:1rem;">
-              
-            </p>
+            <p id="schoolHours" class="meta-line" hidden></p>
+            <p id="schoolPrincipal" class="meta-line" hidden></p>
+            <p id="schoolYayasan" class="meta-line" hidden></p>
+            <p id="officialLinks" class="meta-line" hidden></p>
+            <div id="complaintCard" class="complaint-box" hidden>
+              <h4>Saran &amp; Pengaduan</h4>
+              <p id="complaintNote"></p>
+              <div class="ppdb-actions" id="complaintActions"></div>
+            </div>
           </div>
           <div class="map-card">
             <iframe id="mapFrame" title="Peta lokasi sekolah" loading="lazy"

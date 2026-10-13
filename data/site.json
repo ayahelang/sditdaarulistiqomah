@@ -18,7 +18,12 @@
       "sditdaarulistiqomah.sch.id",
       "sditdaarulistiqomah.web.id",
       "darulistiqomah.silverhawk.web.id"
-    ]
+    ],
+    "principal": "",
+    "yayasan": "Yayasan Daarul Istiqomah",
+    "izinOperasional": "",
+    "sekolahKitaUrl": "",
+    "jamOperasional": ""
   },
   "brand": {
     "primary": "#0B6E4F",
@@ -230,7 +235,12 @@
       "Surat keterangan sehat dari dokter (saat observasi)"
     ],
     "quotaNote": "Kuota terbatas. Prioritas berdasarkan kelengkapan berkas dan hasil observasi.",
-    "formEnabled": true
+    "formEnabled": true,
+    "schedule": [],
+    "steps": [],
+    "quota": "",
+    "privacyNote": "",
+    "flowNote": ""
   },
   "media": [
     {
@@ -247,5 +257,28 @@
       "active": true,
       "date": "2026-10-10"
     }
-  ]
+  ],
+  "visionMission": {
+    "vision": "",
+    "mission": [],
+    "motto": ""
+  },
+  "leadership": [],
+  "facilities": [],
+  "teachers": [],
+  "achievements": [],
+  "calendar": [],
+  "faq": [],
+  "fees": {
+    "enabled": false,
+    "title": "Informasi Biaya Pendidikan",
+    "note": "",
+    "items": []
+  },
+  "complaint": {
+    "enabled": false,
+    "email": "",
+    "whatsapp": "",
+    "note": ""
+  }
 }

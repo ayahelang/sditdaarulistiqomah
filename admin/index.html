@@ -379,6 +379,7 @@
 
     <nav class="admin-tabs-bar" id="adminTabs" role="tablist" aria-label="Menu panel admin">
       <button type="button" class="admin-tab active" role="tab" data-tab="profil" aria-selected="true">Profil</button>
+      <button type="button" class="admin-tab" role="tab" data-tab="akademik" aria-selected="false">Akademik</button>
       <button type="button" class="admin-tab" role="tab" data-tab="media" aria-selected="false">Media</button>
       <button type="button" class="admin-tab" role="tab" data-tab="pengumuman" aria-selected="false">Pengumuman</button>
       <button type="button" class="admin-tab" role="tab" data-tab="carousel" aria-selected="false">Carousel</button>
@@ -393,27 +394,48 @@
 <div class="admin-tab-panel active" id="tab-profil" role="tabpanel" data-tab-panel="profil">
 <div class="admin-card">
       <h2>Profil Sekolah</h2>
+      <p class="hint">Kosongkan field yang belum siap — section terkait tidak tampil di website publik.</p>
       <div class="row">
-        <div>
-          <label>Nama sekolah</label>
-          <input id="fName" type="text">
-        </div>
-        <div>
-          <label>Tagline</label>
-          <input id="fTagline" type="text">
-        </div>
+        <div><label>Nama sekolah</label><input id="fName" type="text"></div>
+        <div><label>Tagline</label><input id="fTagline" type="text"></div>
       </div>
-      <label>Alamat</label>
-      <input id="fAddress" type="text">
+      <label>Alamat</label><input id="fAddress" type="text">
       <div class="row">
-        <div>
-          <label>Email</label>
-          <input id="fEmail" type="email">
-        </div>
-        <div>
-          <label>WhatsApp (62…)</label>
-          <input id="fWa" type="text">
-        </div>
+        <div><label>Email</label><input id="fEmail" type="email"></div>
+        <div><label>WhatsApp (62…)</label><input id="fWa" type="text"></div>
+      </div>
+      <div class="row">
+        <div><label>Kepala Sekolah</label><input id="fPrincipal" type="text" placeholder="Nama kepala sekolah"></div>
+        <div><label>Yayasan / Naungan</label><input id="fYayasan" type="text"></div>
+      </div>
+      <div class="row">
+        <div><label>Jam operasional</label><input id="fHours" type="text" placeholder="Senin–Jumat 07.00–15.00"></div>
+        <div><label>URL Sekolah Kita / profil resmi</label><input id="fSekolahKita" type="url" placeholder="https://…"></div>
+      </div>
+      <label>Izin operasional (opsional)</label><input id="fIzin" type="text" placeholder="Nomor SK / izin">
+    </div>
+<div class="admin-card">
+      <h2>Visi &amp; Misi</h2>
+      <label>Visi</label>
+      <textarea id="fVision" rows="3" placeholder="Kosongkan jika belum ingin ditampilkan"></textarea>
+      <label>Misi (satu baris per poin)</label>
+      <textarea id="fMission" rows="5" placeholder="Poin misi 1&#10;Poin misi 2"></textarea>
+      <label>Motto</label>
+      <input id="fMotto" type="text" placeholder="Opsional">
+    </div>
+<div class="admin-card">
+      <h2>Pimpinan</h2>
+      <div class="list" id="leadershipList"></div>
+      <div class="actions"><button class="btn btn-primary" type="button" id="btnAddLeadership">+ Tambah</button></div>
+    </div>
+<div class="admin-card">
+      <h2>Saran &amp; Pengaduan</h2>
+      <label>Tampilkan di website</label>
+      <select id="fComplaintEnabled"><option value="false">Tidak</option><option value="true">Ya</option></select>
+      <label>Catatan</label><textarea id="fComplaintNote" rows="2"></textarea>
+      <div class="row">
+        <div><label>Email pengaduan</label><input id="fComplaintEmail" type="email"></div>
+        <div><label>WA pengaduan (62…)</label><input id="fComplaintWa" type="text"></div>
       </div>
     </div>
 </div><!-- /tab-profil -->
@@ -602,24 +624,71 @@
     </div>
 </div><!-- /tab-galeri -->
 
+
+<div class="admin-tab-panel" id="tab-akademik" role="tabpanel" data-tab-panel="akademik">
+<div class="admin-card">
+  <h2>Fasilitas</h2>
+  <p class="hint">Section Fasilitas hanya muncul di frontend jika ada minimal 1 item.</p>
+  <div class="list" id="facilitiesList"></div>
+  <div class="actions"><button class="btn btn-primary" type="button" id="btnAddFacility">+ Tambah Fasilitas</button></div>
+</div>
+<div class="admin-card">
+  <h2>Guru &amp; Staff</h2>
+  <div class="list" id="teachersList"></div>
+  <div class="actions"><button class="btn btn-primary" type="button" id="btnAddTeacher">+ Tambah Guru</button></div>
+</div>
+<div class="admin-card">
+  <h2>Prestasi</h2>
+  <div class="list" id="achievementsList"></div>
+  <div class="actions"><button class="btn btn-primary" type="button" id="btnAddAchievement">+ Tambah Prestasi</button></div>
+</div>
+<div class="admin-card">
+  <h2>Kalender Akademik</h2>
+  <div class="list" id="calendarListAdmin"></div>
+  <div class="actions"><button class="btn btn-primary" type="button" id="btnAddCalendar">+ Tambah Agenda</button></div>
+</div>
+</div><!-- /tab-akademik -->
+
 <div class="admin-tab-panel" id="tab-ppdb" role="tabpanel" data-tab-panel="ppdb">
 <div class="admin-card">
-      <h2>PPDB</h2>
+      <h2>PPDB — Pengaturan</h2>
       <div class="row">
-        <div>
-          <label>Tahun ajaran</label>
-          <input id="fPpdbYear" type="text">
-        </div>
+        <div><label>Tahun ajaran</label><input id="fPpdbYear" type="text"></div>
         <div>
           <label>Status buka</label>
-          <select id="fPpdbOpen">
-            <option value="true">Dibuka</option>
-            <option value="false">Ditutup</option>
-          </select>
+          <select id="fPpdbOpen"><option value="true">Dibuka</option><option value="false">Ditutup</option></select>
         </div>
       </div>
-      <label>Catatan PPDB</label>
-      <textarea id="fPpdbNote"></textarea>
+      <label>Catatan PPDB</label><textarea id="fPpdbNote"></textarea>
+      <label>Kuota</label><input id="fPpdbQuota" type="text" placeholder="Contoh: 56 siswa (2 rombel)">
+      <label>Catatan samping / alur singkat</label><textarea id="fPpdbFlowNote" rows="2"></textarea>
+      <label>Kebijakan privasi data (form)</label><textarea id="fPpdbPrivacy" rows="3" placeholder="Penjelasan penggunaan data calon siswa"></textarea>
+      <label>Syarat (satu baris per syarat)</label><textarea id="fPpdbReqs" rows="5"></textarea>
+    </div>
+<div class="admin-card">
+      <h2>Alur Pendaftaran (steps)</h2>
+      <div class="list" id="ppdbStepsList"></div>
+      <div class="actions"><button class="btn btn-primary" type="button" id="btnAddPpdbStep">+ Tambah Tahap</button></div>
+    </div>
+<div class="admin-card">
+      <h2>Jadwal PPDB</h2>
+      <div class="list" id="ppdbScheduleList"></div>
+      <div class="actions"><button class="btn btn-primary" type="button" id="btnAddPpdbSchedule">+ Tambah Jadwal</button></div>
+    </div>
+<div class="admin-card">
+      <h2>FAQ PPDB</h2>
+      <div class="list" id="faqList"></div>
+      <div class="actions"><button class="btn btn-primary" type="button" id="btnAddFaq">+ Tambah FAQ</button></div>
+    </div>
+<div class="admin-card">
+      <h2>Informasi Biaya</h2>
+      <p class="hint">Section Biaya hanya tampil jika diaktifkan dan ada item/catatan.</p>
+      <label>Tampilkan di website</label>
+      <select id="fFeesEnabled"><option value="false">Tidak</option><option value="true">Ya</option></select>
+      <label>Judul</label><input id="fFeesTitle" type="text" value="Informasi Biaya Pendidikan">
+      <label>Catatan</label><textarea id="fFeesNote" rows="2"></textarea>
+      <div class="list" id="feesList"></div>
+      <div class="actions"><button class="btn btn-primary" type="button" id="btnAddFee">+ Tambah Komponen Biaya</button></div>
     </div>
 <div class="admin-card" id="ppdbDataCard">
       <h2>📋 Data Pendaftaran PPDB</h2>
