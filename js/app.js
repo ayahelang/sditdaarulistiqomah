@@ -208,6 +208,7 @@
     active.forEach((item, idx) => {
       const slide = el('div', {
         class: 'slide' + (idx === 0 ? ' active' : ''),
+        'data-admin-edit': 'carousel:' + idx,
         style: `background-image:url('${item.image}');background-position:${item.imagePosition||'center 40%'}`
       }, [
         el('div', { class: 'slide-content' }, [
@@ -246,8 +247,8 @@
     const box = document.getElementById('stats');
     if (!box || !stats) return;
     box.innerHTML = '';
-    stats.forEach((s) => {
-      box.appendChild(el('div', { class: 'stat-card' }, [
+    stats.forEach((s, idx) => {
+      box.appendChild(el('div', { class: 'stat-card', 'data-admin-edit': 'stats:' + idx }, [
         el('strong', {}, [s.value]),
         el('span', {}, [s.label])
       ]));
@@ -258,8 +259,8 @@
     const box = document.getElementById('programs');
     if (!box || !programs) return;
     box.innerHTML = '';
-    programs.forEach((p) => {
-      box.appendChild(el('article', { class: 'card program-card' }, [
+    programs.forEach((p, idx) => {
+      box.appendChild(el('article', { class: 'card program-card', 'data-admin-edit': 'programs:' + idx }, [
         el('div', { class: 'icon' }, [p.icon || '⭐']),
         el('h3', {}, [p.title]),
         el('p', {}, [p.desc])
@@ -728,8 +729,8 @@
     const box = document.getElementById('activities');
     if (!box || !list) return;
     box.innerHTML = '';
-    list.forEach((a) => {
-      box.appendChild(el('div', { class: 'activity-item' }, [
+    list.forEach((a, idx) => {
+      box.appendChild(el('div', { class: 'activity-item', 'data-admin-edit': 'activities:' + idx }, [
         el('div', { class: 'day' }, [a.day]),
         el('div', {}, [
           el('h3', {}, [a.title]),
@@ -823,14 +824,14 @@
     const grid = document.getElementById('leadershipGrid');
     if (!grid) return list.length > 0;
     grid.innerHTML = '';
-    list.forEach((p) => {
+    list.forEach((p, idx) => {
       const av = el('div', { class: 'avatar' });
       if (hasText(p.photo)) {
         av.appendChild(el('img', { src: p.photo, alt: p.name || '' }));
       } else {
         av.textContent = (p.name || '?').charAt(0).toUpperCase();
       }
-      grid.appendChild(el('article', { class: 'card person-card' }, [
+      grid.appendChild(el('article', { class: 'card person-card', 'data-admin-edit': 'leadership:' + idx }, [
         av,
         el('div', { class: 'role' }, [p.role || '']),
         el('h3', {}, [p.name || '']),
@@ -849,15 +850,20 @@
       return list.length > 0;
     }
     grid.innerHTML = '';
-    list.forEach((f) => {
+    list.forEach((f, idx) => {
+      const bodyKids = [];
+      if (hasText(f.icon)) bodyKids.push(el('div', { class: 'icon' }, [f.icon]));
+      bodyKids.push(el('h3', {}, [f.name || '']));
+      if (hasText(f.desc)) bodyKids.push(el('p', {}, [f.desc]));
       const kids = [];
       if (hasText(f.image)) {
         kids.push(el('img', { src: f.image, alt: f.name || '', loading: 'lazy' }));
       }
-      if (hasText(f.icon)) kids.push(el('div', { class: 'icon' }, [f.icon]));
-      kids.push(el('h3', {}, [f.name || '']));
-      if (hasText(f.desc)) kids.push(el('p', {}, [f.desc]));
-      grid.appendChild(el('article', { class: 'card facility-card' }, kids));
+      kids.push(el('div', { class: 'facility-body' }, bodyKids));
+      grid.appendChild(el('article', {
+        class: 'card facility-card',
+        'data-admin-edit': 'facilities:' + idx
+      }, kids));
     });
     console.info('[SDIT] Fasilitas ditampilkan:', list.length);
     return list.length > 0;
@@ -869,12 +875,12 @@
     const grid = document.getElementById('teachersGrid');
     if (!grid) return list.length > 0;
     grid.innerHTML = '';
-    list.forEach((t) => {
+    list.forEach((t, idx) => {
       const av = el('div', { class: 'avatar' });
       if (hasText(t.photo)) av.appendChild(el('img', { src: t.photo, alt: t.name || '' }));
       else av.textContent = (t.name || '?').charAt(0).toUpperCase();
       const role = [t.role, t.subject].filter(hasText).join(' · ');
-      grid.appendChild(el('article', { class: 'card person-card' }, [
+      grid.appendChild(el('article', { class: 'card person-card', 'data-admin-edit': 'teachers:' + idx }, [
         av,
         role ? el('div', { class: 'role' }, [role]) : null,
         el('h3', {}, [t.name || ''])
@@ -889,14 +895,14 @@
     const grid = document.getElementById('achievementsGrid');
     if (!grid) return list.length > 0;
     grid.innerHTML = '';
-    list.forEach((a) => {
+    list.forEach((a, idx) => {
       const kids = [];
       if (hasText(a.year) || hasText(a.level)) {
         kids.push(el('span', { class: 'year-badge' }, [[a.year, a.level].filter(hasText).join(' · ')]));
       }
       kids.push(el('h3', {}, [a.title || '']));
       if (hasText(a.desc)) kids.push(el('p', {}, [a.desc]));
-      grid.appendChild(el('article', { class: 'card achieve-card' }, kids));
+      grid.appendChild(el('article', { class: 'card achieve-card', 'data-admin-edit': 'achievements:' + idx }, kids));
     });
     return list.length > 0;
   }
@@ -907,9 +913,9 @@
     const box = document.getElementById('calendarList');
     if (!box) return list.length > 0;
     box.innerHTML = '';
-    list.forEach((c) => {
+    list.forEach((c, idx) => {
       const dateStr = [c.date, c.endDate].filter(hasText).join(' – ');
-      box.appendChild(el('div', { class: 'calendar-item' }, [
+      box.appendChild(el('div', { class: 'calendar-item', 'data-admin-edit': 'calendar:' + idx }, [
         el('div', {}, [
           el('div', { class: 'date' }, [dateStr || '—']),
           hasText(c.type) ? el('div', { class: 'type' }, [c.type]) : null
@@ -1027,8 +1033,9 @@
     if (stepsWrap && stepsOl) {
       if (steps.length) {
         stepsOl.innerHTML = '';
-        steps.forEach((s) => {
+        steps.forEach((s, idx) => {
           const li = document.createElement('li');
+          li.setAttribute('data-admin-edit', 'ppdb.steps:' + idx);
           li.innerHTML = '<strong>' + escapeHtml(s.title) + '</strong>' +
             (hasText(s.desc) ? ' — ' + escapeHtml(s.desc) : '');
           stepsOl.appendChild(li);
@@ -1043,8 +1050,8 @@
     if (schWrap && schBox) {
       if (schedule.length) {
         schBox.innerHTML = '';
-        schedule.forEach((s) => {
-          schBox.appendChild(el('div', { class: 'calendar-item' }, [
+        schedule.forEach((s, idx) => {
+          schBox.appendChild(el('div', { class: 'calendar-item', 'data-admin-edit': 'ppdb.schedule:' + idx }, [
             el('div', { class: 'date' }, [s.date || '—']),
             el('div', {}, [
               el('strong', {}, [s.label || '']),
@@ -1062,9 +1069,10 @@
     if (faqWrap && faqBox) {
       if (faqList.length) {
         faqBox.innerHTML = '';
-        faqList.forEach((f) => {
+        faqList.forEach((f, idx) => {
           const d = document.createElement('details');
           d.className = 'faq-item';
+          d.setAttribute('data-admin-edit', 'faq:' + idx);
           d.innerHTML = '<summary>' + escapeHtml(f.q) + '</summary><p>' + escapeHtml(f.a) + '</p>';
           faqBox.appendChild(d);
         });
@@ -1636,9 +1644,15 @@
       setupPpdbForm();
       setupPpdbNotifBell();
       // Tag sections that are not item-level
-      document.querySelectorAll('#ppdb, .ppdb-box').forEach((node) => {
-        node.setAttribute('data-admin-edit', 'school:0');
+      document.querySelectorAll('#ppdb .ppdb-box').forEach((node) => {
+        node.setAttribute('data-admin-edit', 'ppdbMeta:0');
       });
+      const visi = document.getElementById('visi');
+      if (visi && !visi.hidden) visi.setAttribute('data-admin-edit', 'visionMission:0');
+      const biaya = document.getElementById('biaya');
+      if (biaya && !biaya.hidden) biaya.setAttribute('data-admin-edit', 'feesMeta:0');
+      const complaint = document.getElementById('complaintCard');
+      if (complaint && !complaint.hidden) complaint.setAttribute('data-admin-edit', 'complaint:0');
     } catch (err) {
       console.error(err);
       const h = document.getElementById('schoolName');

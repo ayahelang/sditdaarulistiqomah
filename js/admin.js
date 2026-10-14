@@ -246,7 +246,7 @@
 
   function ensureSiteArrays(d) {
     if (!d) return;
-    ['media','announcements','leadership','facilities','teachers','achievements','calendar','faq'].forEach((k) => {
+    ['media','announcements','leadership','facilities','teachers','achievements','calendar','faq','programs','activities','stats'].forEach((k) => {
       if (!Array.isArray(d[k])) d[k] = [];
     });
     if (!d.visionMission) d.visionMission = { vision: '', mission: [], motto: '' };
@@ -446,6 +446,20 @@
       { key: 'amount', label: 'Nominal', type: 'text' },
       { key: 'period', label: 'Periode', type: 'text' },
       { key: 'note', label: 'Keterangan', type: 'textarea' }
+    ],
+    programs: [
+      { key: 'title', label: 'Judul program', type: 'text' },
+      { key: 'icon', label: 'Emoji ikon', type: 'text' },
+      { key: 'desc', label: 'Deskripsi', type: 'textarea' }
+    ],
+    activities: [
+      { key: 'day', label: 'Hari / label waktu', type: 'text' },
+      { key: 'title', label: 'Judul', type: 'text' },
+      { key: 'desc', label: 'Deskripsi', type: 'textarea' }
+    ],
+    stats: [
+      { key: 'value', label: 'Nilai (angka/teks)', type: 'text' },
+      { key: 'label', label: 'Label', type: 'text' }
     ]
   };
 
@@ -1753,27 +1767,57 @@
     const params = new URLSearchParams(location.search);
     const edit = params.get('edit');
     if (!edit) return;
-    const [type, idxStr] = edit.split(':');
-    const index = parseInt(idxStr, 10);
-    if (!type || Number.isNaN(index)) return;
-    // Wait until unlocked & data loaded
+    const colon = edit.lastIndexOf(':');
+    const type = colon >= 0 ? edit.slice(0, colon) : edit;
+    const index = parseInt(colon >= 0 ? edit.slice(colon + 1) : '-1', 10);
+    if (!type) return;
+
+    const tabFor = {
+      programs: 'profil', facilities: 'akademik', teachers: 'akademik',
+      achievements: 'akademik', calendar: 'akademik', leadership: 'profil',
+      carousel: 'carousel', articles: 'berita', gallery: 'galeri',
+      videos: 'video', media: 'media', announcements: 'pengumuman',
+      faq: 'ppdb', 'ppdb.steps': 'ppdb', 'ppdb.schedule': 'ppdb',
+      'fees.items': 'ppdb', activities: 'profil', stats: 'profil',
+      visionMission: 'profil', feesMeta: 'ppdb', complaint: 'profil',
+      ppdbMeta: 'ppdb', school: 'profil'
+    };
+
     const tryOpen = () => {
-      if (!isAuthed()) return;
-      if (!data || !data[type]) return;
+      if (!isAuthed() || !data) return false;
+      const tab = tabFor[type];
+      if (tab && typeof window.__adminActivateTab === 'function') {
+        window.__adminActivateTab(tab);
+      }
+      // Meta / form fields (bukan list item)
+      if (type === 'visionMission' || type === 'feesMeta' || type === 'complaint' || type === 'ppdbMeta' || type === 'school') {
+        status('Buka tab terkait untuk mengedit ' + type + ' (form di panel).');
+        try {
+          const u = new URL(location.href);
+          u.searchParams.delete('edit');
+          history.replaceState({}, '', u.pathname + u.search);
+        } catch (_) {}
+        return true;
+      }
+      try {
+        getListRef(type);
+      } catch (_) {
+        return false;
+      }
+      if (Number.isNaN(index) || index < 0) return false;
       openEditor(type, index);
-      status('Membuka editor untuk ' + type + ' #' + (index + 1));
-      // clean URL
+      status('Membuka editor: ' + type + ' #' + (index + 1));
       try {
         const u = new URL(location.href);
         u.searchParams.delete('edit');
         history.replaceState({}, '', u.pathname + u.search);
       } catch (_) {}
+      return true;
     };
-    // Poll briefly until auth + data ready
     let n = 0;
     const t = setInterval(() => {
       n++;
-      if (isAuthed() && data) { clearInterval(t); tryOpen(); }
+      if (isAuthed() && data && tryOpen()) clearInterval(t);
       if (n > 40) clearInterval(t);
     }, 250);
   }
