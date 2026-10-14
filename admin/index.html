@@ -359,6 +359,9 @@
 
   <div id="adminApp" class="locked">
   <div class="status-bar" id="status">Memuat…</div>
+  <div id="dirtyBanner" hidden style="display:none;background:#fff7e6;border-bottom:2px solid #C9A227;color:#084C37;padding:.65rem 1rem;text-align:center;font-weight:600;font-size:.9rem">
+    Ada perubahan yang belum disimpan. Klik <strong>Simpan ke Google Sheets</strong> agar tampil di website publik.
+  </div>
 
   <div class="admin-wrap"><div class="admin-card">
       <h1>Panel Admin</h1>
@@ -628,7 +631,12 @@
 <div class="admin-tab-panel" id="tab-akademik" role="tabpanel" data-tab-panel="akademik">
 <div class="admin-card">
   <h2>Fasilitas</h2>
-  <p class="hint">Section Fasilitas hanya muncul di frontend jika ada minimal 1 item.</p>
+  <p class="hint">
+    Isi minimal <strong>Nama</strong> (wajib). Icon emoji &amp; URL gambar opsional.
+    Setelah tambah/edit, klik <strong>Simpan ke Google Sheets</strong> di toolbar atas,
+    lalu buka website publik dan hard-refresh (Ctrl+Shift+R).
+    Section Fasilitas hanya muncul di frontend jika ada minimal 1 item bernama.
+  </p>
   <div class="list" id="facilitiesList"></div>
   <div class="actions"><button class="btn btn-primary" type="button" id="btnAddFacility">+ Tambah Fasilitas</button></div>
 </div>

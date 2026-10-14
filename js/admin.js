@@ -516,13 +516,28 @@
       const el = document.getElementById('ef_' + f.key);
       if (el) item[f.key] = el.value.trim();
     });
+    // Field wajib agar tampil di frontend
+    const requiredKey = {
+      facilities: 'name', teachers: 'name', leadership: 'name',
+      achievements: 'title', calendar: 'title', faq: 'q',
+      'ppdb.steps': 'title', 'ppdb.schedule': 'label', 'fees.items': 'name',
+      carousel: 'title', articles: 'title', gallery: 'title', videos: 'title', media: 'title'
+    }[type];
+    if (requiredKey && !(item[requiredKey] || '').trim()) {
+      status('✗ Isi field wajib dulu: ' + requiredKey);
+      const el = document.getElementById('ef_' + requiredKey);
+      if (el) { el.focus(); el.style.outline = '2px solid #c0392b'; }
+      return;
+    }
     if (index >= 0) list[index] = item;
     else list.unshift(item);
+    window.__siteDirty = true;
+    const db = document.getElementById('dirtyBanner');
+    if (db) { db.hidden = false; db.style.display = 'block'; }
     closeEditor();
     renderLists();
-    status('Perubahan disimpan di form. Klik "Simpan ke Browser" agar permanen di sesi ini.');
+    status('✓ Item disimpan di panel. Klik tombol hijau "Simpan ke Google Sheets" agar tampil di website publik.');
   }
-
 
   function themedConfirm(message) {
     return new Promise((resolve) => {
@@ -548,6 +563,9 @@
   async function deleteItem(type, index) {
     if (!(await themedConfirm('Hapus item ini? Simpan ke Google Sheets agar perubahan permanen.'))) return;
     getListRef(type).splice(index, 1);
+    window.__siteDirty = true;
+    const db = document.getElementById('dirtyBanner');
+    if (db) { db.hidden = false; db.style.display = 'block'; }
     renderLists();
     status('Item dihapus. Klik Simpan ke Browser.');
   }
@@ -770,35 +788,87 @@
   }
 
   function renderExtraLists() {
-    function simpleList(boxId, type, titleFn) {
+    function thumbHtml(src, fallback) {
+      if (src) {
+        return '<div class="li-thumb"><img class="thumb-prev" src="' + escapeHtml(resolveAdminAsset(src)) + '" alt="" onerror="this.classList.add(\'err\')"></div>';
+      }
+      return '<div class="li-thumb" style="display:grid;place-items:center;font-size:1.5rem;background:#e8f5ef">' + (fallback || '•') + '</div>';
+    }
+    function simpleList(boxId, type, opts) {
       const box = $(boxId);
       if (!box) return;
       box.innerHTML = '';
       const list = getListRef(type);
       if (!list.length) {
-        box.innerHTML = '<p class="hint">Belum ada data. Klik tambah, lalu Simpan ke Google Sheets.</p>';
+        box.innerHTML = '<p class="hint">Belum ada data. Klik tambah → isi form → lalu <strong>Simpan ke Google Sheets</strong>.</p>';
         return;
       }
       list.forEach((item, i) => {
         const row = document.createElement('div');
         row.className = 'list-item';
+        const imgKey = opts.imageKey;
+        const icon = opts.iconFn ? opts.iconFn(item) : '•';
+        const src = imgKey ? (item[imgKey] || '') : '';
+        row.insertAdjacentHTML('beforeend', thumbHtml(src, icon));
         const mid = document.createElement('div');
         mid.className = 'li-info';
-        mid.innerHTML = '<strong>' + escapeHtml(titleFn(item)) + '</strong>';
+        const title = opts.titleFn(item);
+        const meta = opts.metaFn ? opts.metaFn(item) : '';
+        mid.innerHTML = '<strong>' + escapeHtml(title) + '</strong>' +
+          (meta ? '<div class="meta">' + escapeHtml(meta) + '</div>' : '');
         row.appendChild(mid);
         row.appendChild(rowActions(type, i));
         box.appendChild(row);
       });
     }
-    simpleList('leadershipList', 'leadership', (x) => (x.name || 'Tanpa nama') + (x.role ? ' — ' + x.role : ''));
-    simpleList('facilitiesList', 'facilities', (x) => x.name || 'Fasilitas');
-    simpleList('teachersList', 'teachers', (x) => (x.name || 'Guru') + (x.subject ? ' · ' + x.subject : ''));
-    simpleList('achievementsList', 'achievements', (x) => (x.title || 'Prestasi') + (x.year ? ' (' + x.year + ')' : ''));
-    simpleList('calendarListAdmin', 'calendar', (x) => (x.title || 'Agenda') + (x.date ? ' — ' + x.date : ''));
-    simpleList('faqList', 'faq', (x) => x.q || 'FAQ');
-    simpleList('ppdbStepsList', 'ppdb.steps', (x) => x.title || 'Tahap');
-    simpleList('ppdbScheduleList', 'ppdb.schedule', (x) => (x.label || 'Jadwal') + (x.date ? ' — ' + x.date : ''));
-    simpleList('feesList', 'fees.items', (x) => (x.name || 'Biaya') + (x.amount ? ' · ' + x.amount : ''));
+    simpleList('leadershipList', 'leadership', {
+      titleFn: (x) => (x.name || 'Tanpa nama') + (x.role ? ' — ' + x.role : ''),
+      metaFn: (x) => x.bio || '',
+      imageKey: 'photo',
+      iconFn: () => '👤'
+    });
+    simpleList('facilitiesList', 'facilities', {
+      titleFn: (x) => x.name || 'Fasilitas',
+      metaFn: (x) => x.desc || '',
+      imageKey: 'image',
+      iconFn: (x) => x.icon || '🏫'
+    });
+    simpleList('teachersList', 'teachers', {
+      titleFn: (x) => x.name || 'Guru',
+      metaFn: (x) => [x.role, x.subject].filter(Boolean).join(' · '),
+      imageKey: 'photo',
+      iconFn: () => '👩‍🏫'
+    });
+    simpleList('achievementsList', 'achievements', {
+      titleFn: (x) => x.title || 'Prestasi',
+      metaFn: (x) => [x.year, x.level, x.desc].filter(Boolean).join(' · '),
+      iconFn: () => '🏆'
+    });
+    simpleList('calendarListAdmin', 'calendar', {
+      titleFn: (x) => x.title || 'Agenda',
+      metaFn: (x) => [x.date, x.endDate, x.type].filter(Boolean).join(' · '),
+      iconFn: () => '📅'
+    });
+    simpleList('faqList', 'faq', {
+      titleFn: (x) => x.q || 'FAQ',
+      metaFn: (x) => x.a || '',
+      iconFn: () => '❓'
+    });
+    simpleList('ppdbStepsList', 'ppdb.steps', {
+      titleFn: (x) => x.title || 'Tahap',
+      metaFn: (x) => x.desc || '',
+      iconFn: () => '①'
+    });
+    simpleList('ppdbScheduleList', 'ppdb.schedule', {
+      titleFn: (x) => x.label || 'Jadwal',
+      metaFn: (x) => [x.date, x.note].filter(Boolean).join(' · '),
+      iconFn: () => '🗓️'
+    });
+    simpleList('feesList', 'fees.items', {
+      titleFn: (x) => x.name || 'Biaya',
+      metaFn: (x) => [x.amount, x.period, x.note].filter(Boolean).join(' · '),
+      iconFn: () => '💰'
+    });
   }
 
   function renderLists() {
@@ -950,10 +1020,20 @@
       // clear public cache so frontend refetches
       try { localStorage.removeItem('sdit_di_site_cache_v2'); } catch (_) {}
       const cnt = j.counts || {};
+      window.__siteDirty = false;
+      const db2 = document.getElementById('dirtyBanner');
+      if (db2) { db2.hidden = true; db2.style.display = 'none'; }
+      const fac = (data.facilities || []).length;
+      const tea = (data.teachers || []).length;
+      const ach = (data.achievements || []).length;
       status('✓ Tersimpan ke Google Sheets · ' + (j.updatedAt || '') +
         ' · media:' + (cnt.media || 0) +
         ' carousel:' + (cnt.carousel || 0) +
-        ' artikel:' + (cnt.articles || 0));
+        ' artikel:' + (cnt.articles || 0) +
+        ' fasilitas:' + fac +
+        ' guru:' + tea +
+        ' prestasi:' + ach +
+        ' — buka website publik (hard refresh) untuk melihat.');
     } catch (e) {
       status('✗ Gagal simpan ke Sheets: ' + e.message);
     }
@@ -1740,6 +1820,9 @@
 
   setupAdminTabs();
   handleDeepLinkEdit();
+  window.addEventListener('beforeunload', (e) => {
+    if (window.__siteDirty) { e.preventDefault(); e.returnValue = ''; }
+  });
   if (isAuthed()) focusPpdbSectionIfNeeded();
 
   // Re-focus after login
