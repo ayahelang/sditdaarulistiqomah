@@ -234,8 +234,26 @@
     function go(n) {
       const s = slides();
       if (!s.length) return;
-      current = (n + s.length) % s.length;
-      s.forEach((x, i) => x.classList.toggle('active', i === current));
+      const next = (n + s.length) % s.length;
+      if (next === current) return;
+      // Crossfade: aktifkan next dulu, baru nonaktifkan current → hindari frame kosong
+      s.forEach((x, i) => {
+        if (i === next) {
+          x.classList.add('active');
+          x.style.zIndex = '2';
+        } else if (i === current) {
+          x.style.zIndex = '1';
+          // biarkan opacity transition, lepas active setelah tick
+          requestAnimationFrame(() => {
+            x.classList.remove('active');
+            x.style.zIndex = '';
+          });
+        } else {
+          x.classList.remove('active');
+          x.style.zIndex = '';
+        }
+      });
+      current = next;
       dotEls().forEach((x, i) => x.classList.toggle('active', i === current));
     }
     setInterval(() => go(current + 1), 6000);
@@ -773,6 +791,14 @@
         more.hidden = true;
         more.setAttribute('hidden', '');
         more.classList.remove('open');
+        const btn = document.getElementById('navMoreBtn');
+        if (btn) btn.setAttribute('aria-expanded', 'false');
+      }
+      // Selalu mulai terlipat saat data di-render ulang
+      if (anyMore) {
+        more.classList.remove('open');
+        const btn = document.getElementById('navMoreBtn');
+        if (btn) btn.setAttribute('aria-expanded', 'false');
       }
     }
   }
@@ -1536,6 +1562,9 @@
     const more = document.getElementById('navMore');
     const moreBtn = document.getElementById('navMoreBtn');
     if (more && moreBtn) {
+      // Default terlipat
+      more.classList.remove('open');
+      moreBtn.setAttribute('aria-expanded', 'false');
       moreBtn.addEventListener('click', (e) => {
         e.preventDefault();
         e.stopPropagation();
@@ -1547,6 +1576,13 @@
           more.classList.remove('open');
           moreBtn.setAttribute('aria-expanded', 'false');
         }
+      });
+      // Tutup lagi saat link submenu diklik
+      more.querySelectorAll('a').forEach((a) => {
+        a.addEventListener('click', () => {
+          more.classList.remove('open');
+          moreBtn.setAttribute('aria-expanded', 'false');
+        });
       });
     }
   }

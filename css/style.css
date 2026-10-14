@@ -152,37 +152,64 @@ a.btn-ghost:hover, .btn-ghost:hover {
 }
 .nav-toggle span { width: 18px; height: 2px; background: var(--primary-dark); border-radius: 2px; }
 
-/* Hero / Carousel — tinggi penuh, gap cream maks 5px */
+/* Hero / Carousel */
 .hero {
   position: relative;
   isolation: isolate;
   margin: 0;
   padding: 0;
+  background: #0B6E4F;
 }
 .carousel {
   position: relative;
-  height: clamp(560px, 72vh, 820px);
-  min-height: 560px;
-  max-height: 90vh;
+  height: clamp(480px, 68vh, 780px);
+  min-height: 480px;
+  max-height: 85vh;
   overflow: hidden;
   margin: 0;
+  /* Cegah blank/cream saat transisi slide */
+  background:
+    linear-gradient(105deg, rgba(8,76,55,.92) 0%, rgba(11,110,79,.75) 50%, rgba(26,31,44,.55) 100%),
+    #0B6E4F;
 }
 .slide {
-  position: absolute; inset: 0; opacity: 0; pointer-events: none;
-  transition: opacity .7s ease;
-  background-size: cover; background-position: center center;
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .55s ease-in-out;
+  background-size: cover;
+  background-position: center center;
   background-repeat: no-repeat;
+  z-index: 0;
+  /* Pastikan selalu menutupi area carousel */
+  width: 100%;
+  height: 100%;
+  min-height: 100%;
 }
 .slide::before {
-  content: ""; position: absolute; inset: 0;
+  content: "";
+  position: absolute;
+  inset: 0;
   background: linear-gradient(105deg, rgba(8,76,55,.88) 0%, rgba(11,110,79,.55) 45%, rgba(26,31,44,.35) 100%);
 }
-.slide.active { opacity: 1; pointer-events: auto; z-index: 1; }
+.slide.active {
+  opacity: 1;
+  pointer-events: auto;
+  z-index: 1;
+}
 .slide-content {
-  position: relative; z-index: 2; height: 100%;
-  display: flex; flex-direction: column; justify-content: center;
-  padding: clamp(1.25rem, 3.5vw, 2.25rem) 0; color: #fff;
-  width: var(--container); margin-inline: auto;
+  position: relative;
+  z-index: 2;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: clamp(1.25rem, 3.5vw, 2.25rem) 0;
+  color: #fff;
+  width: var(--container);
+  margin-inline: auto;
+  box-sizing: border-box;
 }
 .slide-content .eyebrow {
   display: inline-flex; align-items: center; gap: .4rem;
@@ -209,6 +236,35 @@ a.btn-ghost:hover, .btn-ghost:hover {
 /* Sections */
 section { padding: clamp(2.5rem, 6vw, 4.5rem) 0; }
 section.hero { padding: 0; margin: 0; }
+
+/* Carousel mobile: hindari blank & tinggi berlebih */
+@media (max-width: 768px) {
+  .carousel {
+    height: min(62vh, 520px);
+    min-height: 360px;
+    max-height: 70vh;
+  }
+  .slide-content {
+    padding-top: 1.5rem;
+    padding-bottom: 2.5rem;
+    justify-content: flex-end;
+  }
+  .slide-content h1 {
+    font-size: clamp(1.45rem, 7vw, 2rem);
+    max-width: 18ch;
+  }
+  .slide-content p {
+    font-size: .95rem;
+    margin-bottom: 1rem;
+  }
+}
+@media (max-width: 480px) {
+  .carousel {
+    height: min(58vh, 460px);
+    min-height: 320px;
+  }
+}
+
 .section-head { text-align: center; margin-bottom: clamp(1.5rem, 4vw, 2.5rem); }
 .section-head .label {
   color: var(--primary); font-weight: 800; font-size: .8rem; letter-spacing: .08em; text-transform: uppercase;
@@ -970,6 +1026,8 @@ body.admin-edit-armed [data-admin-edit]:hover {
   display: flex;
   align-items: center;
   justify-content: center;
+  width: 100%;
+  height: 100%;
   background:
     linear-gradient(105deg, rgba(8,76,55,.92) 0%, rgba(11,110,79,.78) 50%, rgba(26,31,44,.55) 100%),
     #0B6E4F;
@@ -1155,7 +1213,7 @@ body.admin-edit-armed [data-admin-edit]::after {
 .complaint-box p { font-size: .88rem; color: var(--muted); margin: 0 0 .65rem; }
 
 
-/* Submenu "Info lainnya" */
+/* Submenu "Info lainnya" — default TERLIPAT, buka hanya saat diklik */
 .nav-dropdown {
   position: relative;
   display: flex;
@@ -1174,20 +1232,26 @@ body.admin-edit-armed [data-admin-edit]::after {
   cursor: pointer;
   display: inline-flex;
   align-items: center;
-  gap: .25rem;
+  gap: .3rem;
 }
 .nav-dropdown-toggle:hover,
 .nav-dropdown.open .nav-dropdown-toggle {
   color: var(--primary);
   background: rgba(11,110,79,.08);
 }
-.nav-caret { font-size: .7rem; opacity: .8; }
+.nav-caret {
+  font-size: .65rem;
+  opacity: .75;
+  display: inline-block;
+  transition: transform .2s ease;
+}
+.nav-dropdown.open .nav-caret { transform: rotate(180deg); }
 .nav-dropdown-menu {
-  display: none;
+  display: none !important; /* default collapsed */
   position: absolute;
   top: calc(100% + 6px);
   left: 0;
-  min-width: 180px;
+  min-width: 190px;
   background: #fff;
   border: 1px solid rgba(11,110,79,.12);
   border-radius: 12px;
@@ -1195,7 +1259,9 @@ body.admin-edit-armed [data-admin-edit]::after {
   padding: .4rem;
   z-index: 80;
 }
-.nav-dropdown.open .nav-dropdown-menu { display: block; }
+.nav-dropdown.open > .nav-dropdown-menu {
+  display: block !important;
+}
 .nav-dropdown-menu a {
   display: block;
   width: 100%;
@@ -1210,8 +1276,9 @@ body.admin-edit-armed [data-admin-edit]::after {
   background: rgba(11,110,79,.08);
   color: var(--primary);
 }
-.nav-dropdown-menu a[hidden],
-.nav-dropdown-menu a[style*="display: none"] { display: none !important; }
+.nav-dropdown-menu a[hidden] {
+  display: none !important;
+}
 @media (max-width: 900px) {
   .nav-dropdown {
     width: 100%;
@@ -1223,12 +1290,14 @@ body.admin-edit-armed [data-admin-edit]::after {
     justify-content: space-between;
   }
   .nav-dropdown-menu {
-    position: static;
-    box-shadow: none;
-    border: none;
-    padding: 0 0 0 .75rem;
-    display: none;
-    background: transparent;
+    position: static !important;
+    box-shadow: none !important;
+    border: none !important;
+    padding: 0 0 .35rem .85rem !important;
+    background: transparent !important;
+    display: none !important;
   }
-  .nav-dropdown.open .nav-dropdown-menu { display: block; }
+  .nav-dropdown.open > .nav-dropdown-menu {
+    display: block !important;
+  }
 }
