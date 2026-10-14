@@ -190,74 +190,89 @@
     }, 500);
   }
 
+  function resolveMediaUrl(src) {
+    if (!src) return '';
+    const s = String(src).trim();
+    if (!s) return '';
+    if (/^(https?:|data:|blob:|\/)/i.test(s)) return s;
+    // path relatif dari root site
+    return s.replace(/^\.\//, '');
+  }
+
   function renderCarousel(items) {
     const track = document.getElementById('carousel');
     const dots = document.getElementById('carouselDots');
-    if (!track || !items?.length) {
+    if (!track || !items || !items.length) {
       finishCarouselTypewriter();
       return;
     }
-    // Jangan hapus loading dulu agar tidak flicker; slide ditambah, loading di-fade
-    const loading = document.getElementById('carouselLoading');
-    // clear slides except loading overlay
     [...track.children].forEach((ch) => {
       if (ch.id !== 'carouselLoading') ch.remove();
     });
     if (dots) dots.innerHTML = '';
-    const active = items.filter((i) => i.active !== false);
+
+    const active = items.filter((i) => i && i.active !== false);
+    // Preload
+    active.forEach((item) => {
+      const src = resolveMediaUrl(item.image);
+      if (!src) return;
+      const im = new Image();
+      im.src = src;
+    });
+
     active.forEach((item, idx) => {
+      const src = resolveMediaUrl(item.image);
+      const pos = item.imagePosition || 'center 40%';
+      const bg = el('img', {
+        class: 'slide-bg',
+        src: src || '',
+        alt: '',
+        decoding: 'async',
+        fetchpriority: idx === 0 ? 'high' : 'low'
+      });
+      bg.style.objectPosition = pos;
+      // fallback jika gagal load
+      bg.addEventListener('error', () => {
+        bg.style.display = 'none';
+        console.warn('[SDIT] Carousel image gagal load:', src);
+      });
+
       const slide = el('div', {
         class: 'slide' + (idx === 0 ? ' active' : ''),
-        'data-admin-edit': 'carousel:' + idx,
-        style: `background-image:url('${item.image}');background-position:${item.imagePosition||'center 40%'}`
+        'data-admin-edit': 'carousel:' + idx
       }, [
+        bg,
         el('div', { class: 'slide-content' }, [
           el('div', { class: 'eyebrow' }, ['SDIT · Islam Terpadu']),
-          el('h1', {}, [item.title]),
-          el('p', {}, [item.subtitle]),
+          el('h1', {}, [item.title || '']),
+          el('p', {}, [item.subtitle || '']),
           el('a', { class: 'btn btn-accent', href: item.ctaLink || '#ppdb' }, [item.cta || 'Selengkapnya'])
         ])
       ]);
       track.appendChild(slide);
-      const dot = el('button', {
-        class: 'dot' + (idx === 0 ? ' active' : ''),
-        type: 'button',
-        'aria-label': 'Slide ' + (idx + 1),
-        onclick: () => go(idx)
-      });
-      dots.appendChild(dot);
+
+      if (dots) {
+        const dot = el('button', {
+          class: 'dot' + (idx === 0 ? ' active' : ''),
+          type: 'button',
+          'aria-label': 'Slide ' + (idx + 1),
+          onclick: () => go(idx)
+        });
+        dots.appendChild(dot);
+      }
     });
 
     let current = 0;
     const slides = () => [...track.querySelectorAll('.slide')];
-    const dotEls = () => [...dots.querySelectorAll('.dot')];
+    const dotEls = () => (dots ? [...dots.querySelectorAll('.dot')] : []);
     function go(n) {
       const s = slides();
       if (!s.length) return;
-      const next = (n + s.length) % s.length;
-      if (next === current) return;
-      // Crossfade: aktifkan next dulu, baru nonaktifkan current → hindari frame kosong
-      s.forEach((x, i) => {
-        if (i === next) {
-          x.classList.add('active');
-          x.style.zIndex = '2';
-        } else if (i === current) {
-          x.style.zIndex = '1';
-          // biarkan opacity transition, lepas active setelah tick
-          requestAnimationFrame(() => {
-            x.classList.remove('active');
-            x.style.zIndex = '';
-          });
-        } else {
-          x.classList.remove('active');
-          x.style.zIndex = '';
-        }
-      });
-      current = next;
+      current = (n + s.length) % s.length;
+      s.forEach((x, i) => x.classList.toggle('active', i === current));
       dotEls().forEach((x, i) => x.classList.toggle('active', i === current));
     }
     setInterval(() => go(current + 1), 6000);
-    // Biarkan salam sempat terbaca, lalu fade → carousel
     setTimeout(() => finishCarouselTypewriter(), 450);
   }
 

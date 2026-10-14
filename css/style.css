@@ -152,51 +152,56 @@ a.btn-ghost:hover, .btn-ghost:hover {
 }
 .nav-toggle span { width: 18px; height: 2px; background: var(--primary-dark); border-radius: 2px; }
 
-/* Hero / Carousel */
+/* Hero / Carousel — baseline stabil (sama pola repo yang jalan) */
 .hero {
   position: relative;
   isolation: isolate;
   margin: 0;
   padding: 0;
-  background: #0B6E4F;
 }
 .carousel {
   position: relative;
-  height: clamp(480px, 68vh, 780px);
-  min-height: 480px;
-  max-height: 85vh;
+  height: clamp(560px, 72vh, 820px);
+  min-height: 560px;
+  max-height: 90vh;
   overflow: hidden;
   margin: 0;
-  /* Cegah blank/cream saat transisi slide */
-  background:
-    linear-gradient(105deg, rgba(8,76,55,.92) 0%, rgba(11,110,79,.75) 50%, rgba(26,31,44,.55) 100%),
-    #0B6E4F;
+  background: #0B6E4F; /* hanya fallback, bukan pengganti foto */
 }
 .slide {
   position: absolute;
   inset: 0;
   opacity: 0;
   pointer-events: none;
-  transition: opacity .55s ease-in-out;
-  background-size: cover;
-  background-position: center center;
-  background-repeat: no-repeat;
+  transition: opacity .7s ease;
   z-index: 0;
-  /* Pastikan selalu menutupi area carousel */
-  width: 100%;
-  height: 100%;
-  min-height: 100%;
-}
-.slide::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(105deg, rgba(8,76,55,.88) 0%, rgba(11,110,79,.55) 45%, rgba(26,31,44,.35) 100%);
+  overflow: hidden;
 }
 .slide.active {
   opacity: 1;
   pointer-events: auto;
   z-index: 1;
+}
+.slide-bg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 40%;
+  display: block;
+  border: 0;
+  z-index: 0;
+  /* cegah layout shift / blank */
+  background: #0B6E4F;
+}
+.slide::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: linear-gradient(105deg, rgba(8,76,55,.88) 0%, rgba(11,110,79,.55) 45%, rgba(26,31,44,.35) 100%);
+  pointer-events: none;
 }
 .slide-content {
   position: relative;
@@ -237,31 +242,12 @@ a.btn-ghost:hover, .btn-ghost:hover {
 section { padding: clamp(2.5rem, 6vw, 4.5rem) 0; }
 section.hero { padding: 0; margin: 0; }
 
-/* Carousel mobile: hindari blank & tinggi berlebih */
+/* Carousel mobile — tinggi proporsional, tanpa merusak foto */
 @media (max-width: 768px) {
   .carousel {
-    height: min(62vh, 520px);
-    min-height: 360px;
-    max-height: 70vh;
-  }
-  .slide-content {
-    padding-top: 1.5rem;
-    padding-bottom: 2.5rem;
-    justify-content: flex-end;
-  }
-  .slide-content h1 {
-    font-size: clamp(1.45rem, 7vw, 2rem);
-    max-width: 18ch;
-  }
-  .slide-content p {
-    font-size: .95rem;
-    margin-bottom: 1rem;
-  }
-}
-@media (max-width: 480px) {
-  .carousel {
-    height: min(58vh, 460px);
-    min-height: 320px;
+    height: clamp(420px, 70vh, 620px);
+    min-height: 420px;
+    max-height: 78vh;
   }
 }
 
@@ -1032,6 +1018,7 @@ body.admin-edit-armed [data-admin-edit]:hover {
     linear-gradient(105deg, rgba(8,76,55,.92) 0%, rgba(11,110,79,.78) 50%, rgba(26,31,44,.55) 100%),
     #0B6E4F;
   transition: opacity .45s ease, visibility .45s ease;
+  pointer-events: none;
 }
 .carousel-loading.is-done {
   opacity: 0;
