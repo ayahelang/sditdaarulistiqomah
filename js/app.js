@@ -208,6 +208,7 @@
     active.forEach((item, idx) => {
       const slide = el('div', {
         class: 'slide' + (idx === 0 ? ' active' : ''),
+        'data-admin-edit': 'carousel:' + idx,
         style: `background-image:url('${item.image}');background-position:${item.imagePosition||'center 40%'}`
       }, [
         el('div', { class: 'slide-content' }, [
@@ -258,8 +259,8 @@
     const box = document.getElementById('programs');
     if (!box || !programs) return;
     box.innerHTML = '';
-    programs.forEach((p) => {
-      box.appendChild(el('article', { class: 'card program-card' }, [
+    programs.forEach((p, idx) => {
+      box.appendChild(el('article', { class: 'card program-card', 'data-admin-edit': 'programs:' + idx }, [
         el('div', { class: 'icon' }, [p.icon || '⭐']),
         el('h3', {}, [p.title]),
         el('p', {}, [p.desc])
@@ -726,14 +727,20 @@
 
   function renderActivities(list) {
     const box = document.getElementById('activities');
-    if (!box || !list) return;
+    const sec = document.getElementById('kegiatan');
+    const rows = (list || []).filter((a) => a && (a.title || a.day));
+    if (!box) return;
     box.innerHTML = '';
-    list.forEach((a) => {
-      box.appendChild(el('div', { class: 'activity-item' }, [
-        el('div', { class: 'day' }, [a.day]),
+    if (sec) {
+      if (!rows.length) { sec.hidden = true; return; }
+      sec.hidden = false; sec.removeAttribute('hidden');
+    }
+    rows.forEach((a, idx) => {
+      box.appendChild(el('div', { class: 'activity-item', 'data-admin-edit': 'activities:' + idx }, [
+        el('div', { class: 'day' }, [a.day || '']),
         el('div', {}, [
-          el('h3', {}, [a.title]),
-          el('p', {}, [a.desc])
+          el('h3', {}, [a.title || '']),
+          el('p', {}, [a.desc || ''])
         ])
       ]));
     });
@@ -823,37 +830,55 @@
     const grid = document.getElementById('leadershipGrid');
     if (!grid) return list.length > 0;
     grid.innerHTML = '';
-    list.forEach((p) => {
+    list.forEach((p, idx) => {
       const av = el('div', { class: 'avatar' });
       if (hasText(p.photo)) {
         av.appendChild(el('img', { src: p.photo, alt: p.name || '' }));
       } else {
         av.textContent = (p.name || '?').charAt(0).toUpperCase();
       }
-      grid.appendChild(el('article', { class: 'card person-card' }, [
+      grid.appendChild(el('article', { class: 'card person-card', 'data-admin-edit': 'leadership:' + idx }, [
         av,
-        el('div', { class: 'role' }, [p.role || '']),
         el('h3', {}, [p.name || '']),
+        hasText(p.role) ? el('p', { class: 'role' }, [p.role]) : null,
         hasText(p.bio) ? el('p', { class: 'bio' }, [p.bio]) : null
       ].filter(Boolean)));
     });
     return list.length > 0;
   }
 
-  function renderFacilities(list) {
-    list = (list || []).filter((x) => hasText(x.name));
+    function renderFacilities(list) {
+    list = (list || []).filter((x) => hasText(x && x.name));
     setSectionVisible('fasilitas', list.length > 0);
     const grid = document.getElementById('facilitiesGrid');
-    if (!grid) return list.length > 0;
+    if (!grid) {
+      console.warn('[SDIT] #facilitiesGrid tidak ditemukan');
+      return list.length > 0;
+    }
     grid.innerHTML = '';
-    list.forEach((f) => {
+    list.forEach((f, idx) => {
       const kids = [];
-      if (hasText(f.image)) kids.push(el('img', { src: f.image, alt: f.name || '' }));
-      if (hasText(f.icon)) kids.push(el('div', { class: 'icon' }, [f.icon]));
-      kids.push(el('h3', {}, [f.name || '']));
-      if (hasText(f.desc)) kids.push(el('p', {}, [f.desc]));
-      grid.appendChild(el('article', { class: 'card facility-card' }, kids));
+      if (hasText(f.image)) {
+        const media = el('div', { class: 'facility-media' });
+        media.appendChild(el('img', { src: f.image, alt: f.name || '', loading: 'lazy' }));
+        if (hasText(f.icon)) {
+          media.appendChild(el('span', { class: 'facility-icon-badge', 'aria-hidden': 'true' }, [f.icon]));
+        }
+        kids.push(media);
+      } else if (hasText(f.icon)) {
+        kids.push(el('div', { class: 'facility-icon-only' }, [f.icon]));
+      }
+      const bodyKids = [
+        el('h3', {}, [f.name || ''])
+      ];
+      if (hasText(f.desc)) bodyKids.push(el('p', {}, [f.desc]));
+      kids.push(el('div', { class: 'facility-body' }, bodyKids));
+      grid.appendChild(el('article', {
+        class: 'card facility-card',
+        'data-admin-edit': 'facilities:' + idx
+      }, kids));
     });
+    console.info('[SDIT] Fasilitas ditampilkan:', list.length);
     return list.length > 0;
   }
 
@@ -863,15 +888,15 @@
     const grid = document.getElementById('teachersGrid');
     if (!grid) return list.length > 0;
     grid.innerHTML = '';
-    list.forEach((t) => {
+    list.forEach((t, idx) => {
       const av = el('div', { class: 'avatar' });
       if (hasText(t.photo)) av.appendChild(el('img', { src: t.photo, alt: t.name || '' }));
       else av.textContent = (t.name || '?').charAt(0).toUpperCase();
       const role = [t.role, t.subject].filter(hasText).join(' · ');
-      grid.appendChild(el('article', { class: 'card person-card' }, [
+      grid.appendChild(el('article', { class: 'card person-card', 'data-admin-edit': 'teachers:' + idx }, [
         av,
-        role ? el('div', { class: 'role' }, [role]) : null,
-        el('h3', {}, [t.name || ''])
+        el('h3', {}, [t.name || '']),
+        role ? el('p', { class: 'role' }, [role]) : null
       ].filter(Boolean)));
     });
     return list.length > 0;
@@ -883,14 +908,14 @@
     const grid = document.getElementById('achievementsGrid');
     if (!grid) return list.length > 0;
     grid.innerHTML = '';
-    list.forEach((a) => {
+    list.forEach((a, idx) => {
       const kids = [];
       if (hasText(a.year) || hasText(a.level)) {
         kids.push(el('span', { class: 'year-badge' }, [[a.year, a.level].filter(hasText).join(' · ')]));
       }
       kids.push(el('h3', {}, [a.title || '']));
       if (hasText(a.desc)) kids.push(el('p', {}, [a.desc]));
-      grid.appendChild(el('article', { class: 'card achieve-card' }, kids));
+      grid.appendChild(el('article', { class: 'card achieve-card', 'data-admin-edit': 'achievements:' + idx }, kids));
     });
     return list.length > 0;
   }
@@ -901,16 +926,16 @@
     const box = document.getElementById('calendarList');
     if (!box) return list.length > 0;
     box.innerHTML = '';
-    list.forEach((c) => {
+    list.forEach((c, idx) => {
       const dateStr = [c.date, c.endDate].filter(hasText).join(' – ');
-      box.appendChild(el('div', { class: 'calendar-item' }, [
+      box.appendChild(el('div', { class: 'calendar-item', 'data-admin-edit': 'calendar:' + idx }, [
         el('div', {}, [
           el('div', { class: 'date' }, [dateStr || '—']),
           hasText(c.type) ? el('div', { class: 'type' }, [c.type]) : null
         ].filter(Boolean)),
         el('div', {}, [
           el('strong', {}, [c.title || '']),
-          hasText(c.desc) ? el('p', { style: 'margin:.35rem 0 0;color:var(--muted);font-size:.9rem' }, [c.desc]) : null
+          hasText(c.desc) ? el('p', {}, [c.desc]) : null
         ].filter(Boolean))
       ]));
     });
@@ -1079,6 +1104,14 @@
   }
 
   function renderAllOptional(data) {
+    data = data || {};
+    console.info('[SDIT] Optional sections:', {
+      facilities: (data.facilities || []).length,
+      teachers: (data.teachers || []).length,
+      achievements: (data.achievements || []).length,
+      leadership: (data.leadership || []).length,
+      calendar: (data.calendar || []).length
+    });
     const flags = {
       visionMission: renderVisionMission(data.visionMission),
       leadership: renderLeadership(data.leadership),
@@ -1618,6 +1651,7 @@
       renderVideos(data.videos, data.media);
       renderActivities(data.activities);
       renderAnnouncements(data.announcements);
+      renderAllOptional(data);
       setupPpdbForm();
       setupPpdbNotifBell();
       // Tag sections that are not item-level

@@ -446,6 +446,20 @@
       { key: 'amount', label: 'Nominal', type: 'text' },
       { key: 'period', label: 'Periode', type: 'text' },
       { key: 'note', label: 'Keterangan', type: 'textarea' }
+    ],
+    programs: [
+      { key: 'title', label: 'Judul program', type: 'text' },
+      { key: 'icon', label: 'Emoji ikon', type: 'text' },
+      { key: 'desc', label: 'Deskripsi', type: 'textarea' }
+    ],
+    activities: [
+      { key: 'day', label: 'Hari / label waktu', type: 'text' },
+      { key: 'title', label: 'Judul kegiatan', type: 'text' },
+      { key: 'desc', label: 'Deskripsi', type: 'textarea' }
+    ],
+    stats: [
+      { key: 'value', label: 'Nilai (angka/teks)', type: 'text' },
+      { key: 'label', label: 'Label', type: 'text' }
     ]
   };
 
@@ -516,13 +530,29 @@
       const el = document.getElementById('ef_' + f.key);
       if (el) item[f.key] = el.value.trim();
     });
+    // Field wajib agar tampil di frontend
+    const requiredKey = {
+      facilities: 'name', teachers: 'name', leadership: 'name',
+      achievements: 'title', calendar: 'title', faq: 'q',
+      'ppdb.steps': 'title', 'ppdb.schedule': 'label', 'fees.items': 'name',
+      carousel: 'title', articles: 'title', gallery: 'title', videos: 'title', media: 'title',
+      programs: 'title', activities: 'title', stats: 'label'
+    }[type];
+    if (requiredKey && !(item[requiredKey] || '').trim()) {
+      status('✗ Isi field wajib dulu: ' + requiredKey);
+      const el = document.getElementById('ef_' + requiredKey);
+      if (el) { el.focus(); el.style.outline = '2px solid #c0392b'; }
+      return;
+    }
     if (index >= 0) list[index] = item;
     else list.unshift(item);
+    window.__siteDirty = true;
+    const db = document.getElementById('dirtyBanner');
+    if (db) { db.hidden = false; db.style.display = 'block'; }
     closeEditor();
     renderLists();
-    status('Perubahan disimpan di form. Klik "Simpan ke Browser" agar permanen di sesi ini.');
+    status('✓ Item disimpan di panel. Klik tombol hijau "Simpan ke Google Sheets" agar tampil di website publik.');
   }
-
 
   function themedConfirm(message) {
     return new Promise((resolve) => {
@@ -548,25 +578,121 @@
   async function deleteItem(type, index) {
     if (!(await themedConfirm('Hapus item ini? Simpan ke Google Sheets agar perubahan permanen.'))) return;
     getListRef(type).splice(index, 1);
+    window.__siteDirty = true;
+    const db = document.getElementById('dirtyBanner');
+    if (db) { db.hidden = false; db.style.display = 'block'; }
     renderLists();
     status('Item dihapus. Klik Simpan ke Browser.');
+  }
+
+  function buildItemPreviewHtml(type, item) {
+    item = item || {};
+    const img = (key) => {
+      const src = item[key];
+      if (!src) return '';
+      const r = resolveAdminAsset(src);
+      return '<img src="' + escapeHtml(r) + '" alt="" style="width:100%;max-height:220px;object-fit:cover;border-radius:12px;margin-bottom:.75rem;background:#e8f5ef">';
+    };
+    const h = (t) => escapeHtml(t || '');
+    if (type === 'facilities') {
+      return img('image') +
+        (item.icon ? '<div style="font-size:1.6rem;margin-bottom:.35rem">' + h(item.icon) + '</div>' : '') +
+        '<h3 style="margin:0 0 .4rem;color:#084C37">' + h(item.name) + '</h3>' +
+        '<p style="margin:0;color:#5B6575;line-height:1.55">' + h(item.desc) + '</p>' +
+        '<p class="hint" style="margin-top:1rem">Tampil di halaman publik: section <strong>Fasilitas</strong> (menu Info lainnya).</p>';
+    }
+    if (type === 'teachers' || type === 'leadership') {
+      return img('photo') +
+        '<div style="text-align:center">' +
+        (item.role ? '<div style="color:#0B6E4F;font-weight:700;font-size:.85rem;margin-bottom:.35rem">' + h(item.role) + '</div>' : '') +
+        '<h3 style="margin:0 0 .4rem;color:#084C37">' + h(item.name) + '</h3>' +
+        (item.subject ? '<p style="margin:0;color:#5B6575">' + h(item.subject) + '</p>' : '') +
+        (item.bio ? '<p style="margin:.5rem 0 0;color:#5B6575;line-height:1.5">' + h(item.bio) + '</p>' : '') +
+        '</div>';
+    }
+    if (type === 'achievements') {
+      return '<span style="display:inline-block;background:#F5E6B8;color:#084C37;font-weight:800;font-size:.75rem;padding:.25rem .6rem;border-radius:999px;margin-bottom:.5rem">' +
+        h([item.year, item.level].filter(Boolean).join(' · ')) + '</span>' +
+        '<h3 style="margin:0 0 .4rem;color:#084C37">' + h(item.title) + '</h3>' +
+        '<p style="margin:0;color:#5B6575;line-height:1.55">' + h(item.desc) + '</p>';
+    }
+    if (type === 'calendar') {
+      return '<div style="font-weight:800;color:#0B6E4F;margin-bottom:.35rem">' + h([item.date, item.endDate].filter(Boolean).join(' – ')) + '</div>' +
+        (item.type ? '<div style="font-size:.75rem;text-transform:uppercase;color:#5B6575;margin-bottom:.35rem">' + h(item.type) + '</div>' : '') +
+        '<h3 style="margin:0 0 .4rem;color:#084C37">' + h(item.title) + '</h3>' +
+        '<p style="margin:0;color:#5B6575">' + h(item.desc) + '</p>';
+    }
+    if (type === 'faq') {
+      return '<strong style="color:#084C37">Q: ' + h(item.q) + '</strong><p style="margin:.5rem 0 0;color:#5B6575">A: ' + h(item.a) + '</p>';
+    }
+    if (type === 'ppdb.steps') {
+      return '<strong style="color:#084C37">' + h(item.title) + '</strong><p style="margin:.4rem 0 0;color:#5B6575">' + h(item.desc) + '</p>';
+    }
+    if (type === 'ppdb.schedule') {
+      return '<div style="font-weight:700;color:#0B6E4F">' + h(item.date) + '</div><strong>' + h(item.label) + '</strong><p style="margin:.35rem 0 0;color:#5B6575">' + h(item.note) + '</p>';
+    }
+    if (type === 'fees.items') {
+      return '<strong style="color:#084C37">' + h(item.name) + '</strong>' +
+        '<div style="font-weight:700;margin:.35rem 0">' + h(item.amount) + (item.period ? ' / ' + h(item.period) : '') + '</div>' +
+        '<p style="margin:0;color:#5B6575">' + h(item.note) + '</p>';
+    }
+    if (type === 'carousel') {
+      return img('image') + '<h3 style="margin:0 0 .35rem;color:#084C37">' + h(item.title) + '</h3><p style="margin:0;color:#5B6575">' + h(item.subtitle) + '</p>';
+    }
+    if (type === 'articles') {
+      return img('image') + '<div style="font-size:.8rem;color:#0B6E4F;font-weight:700">' + h(item.category) + ' · ' + h(item.date) + '</div>' +
+        '<h3 style="margin:.35rem 0;color:#084C37">' + h(item.title) + '</h3><p style="margin:0;color:#5B6575">' + h(item.excerpt) + '</p>';
+    }
+    if (type === 'gallery' || type === 'media') {
+      return img(item.thumb ? 'thumb' : 'image') || img('url') || img('image') +
+        '<strong>' + h(item.title) + '</strong><p style="margin:.35rem 0 0;color:#5B6575;font-size:.85rem">' + h(item.type || item.source || '') + '</p>';
+    }
+    if (type === 'videos') {
+      const id = item.youtubeId || '';
+      const th = id ? 'https://img.youtube.com/vi/' + id + '/hqdefault.jpg' : (item.thumb || '');
+      return (th ? '<img src="' + escapeHtml(th) + '" style="width:100%;border-radius:12px;margin-bottom:.5rem" alt="">' : '') +
+        '<strong>' + h(item.title) + '</strong>';
+    }
+    if (type === 'programs') {
+      return (item.icon ? '<div style="font-size:1.6rem">' + h(item.icon) + '</div>' : '') +
+        '<h3 style="margin:.35rem 0;color:#084C37">' + h(item.title) + '</h3><p style="margin:0;color:#5B6575">' + h(item.desc) + '</p>';
+    }
+    if (type === 'activities') {
+      return '<div style="font-weight:800;color:#0B6E4F">' + h(item.day) + '</div><h3 style="margin:.35rem 0;color:#084C37">' + h(item.title) + '</h3><p style="margin:0;color:#5B6575">' + h(item.desc) + '</p>';
+    }
+    if (type === 'stats') {
+      return '<div style="font-size:1.8rem;font-weight:800;color:#0B6E4F">' + h(item.value) + '</div><div>' + h(item.label) + '</div>';
+    }
+    // generic
+    return '<pre style="white-space:pre-wrap;font-size:.82rem;margin:0">' + h(JSON.stringify(item, null, 2)) + '</pre>';
   }
 
   function rowActions(type, index) {
     const wrap = document.createElement('div');
     wrap.className = 'actions-row';
+    const prev = document.createElement('button');
+    prev.type = 'button';
+    prev.className = 'btn btn-accent';
+    prev.textContent = 'Preview';
+    prev.setAttribute('data-tip', 'Lihat pratinjau tampilan item ini seperti di halaman publik.');
+    prev.onclick = () => {
+      const list = getListRef(type);
+      const item = list[index] || {};
+      openPreviewCard('Preview — ' + type, buildItemPreviewHtml(type, item));
+    };
     const edit = document.createElement('button');
     edit.type = 'button';
     edit.className = 'btn btn-primary';
     edit.textContent = 'Edit';
-    edit.setAttribute('data-tip', 'Buka form untuk mengubah data item ini (judul, gambar, tautan, dll). Setelah edit, klik Simpan di form, lalu Simpan ke Browser.');
+    edit.setAttribute('data-tip', 'Ubah data item. Setelah simpan form, klik Simpan ke Google Sheets agar tampil di website publik.');
     edit.onclick = () => openEditor(type, index);
     const del = document.createElement('button');
     del.type = 'button';
     del.className = 'btn btn-ghost';
     del.textContent = 'Hapus';
-    del.setAttribute('data-tip', 'Hapus item ini dari daftar. Perubahan belum permanen sampai Anda klik Simpan ke Browser atau Export JSON.');
+    del.setAttribute('data-tip', 'Hapus item. Klik Simpan ke Google Sheets agar permanen.');
     del.onclick = () => deleteItem(type, index);
+    wrap.appendChild(prev);
     wrap.appendChild(edit);
     wrap.appendChild(del);
     return wrap;
@@ -770,35 +896,97 @@
   }
 
   function renderExtraLists() {
-    function simpleList(boxId, type, titleFn) {
+    function thumbHtml(src, fallback) {
+      if (src) {
+        return '<div class="li-thumb"><img class="thumb-prev" src="' + escapeHtml(resolveAdminAsset(src)) + '" alt="" onerror="this.classList.add(\'err\')"></div>';
+      }
+      return '<div class="li-thumb" style="display:grid;place-items:center;font-size:1.5rem;background:#e8f5ef">' + (fallback || '•') + '</div>';
+    }
+    function simpleList(boxId, type, opts) {
       const box = $(boxId);
       if (!box) return;
       box.innerHTML = '';
       const list = getListRef(type);
       if (!list.length) {
-        box.innerHTML = '<p class="hint">Belum ada data. Klik tambah, lalu Simpan ke Google Sheets.</p>';
+        box.innerHTML = '<p class="hint">Belum ada data. Klik tambah → isi form → lalu <strong>Simpan ke Google Sheets</strong>.</p>';
         return;
       }
       list.forEach((item, i) => {
         const row = document.createElement('div');
         row.className = 'list-item';
+        const imgKey = opts.imageKey;
+        const icon = opts.iconFn ? opts.iconFn(item) : '•';
+        const src = imgKey ? (item[imgKey] || '') : '';
+        row.insertAdjacentHTML('beforeend', thumbHtml(src, icon));
         const mid = document.createElement('div');
         mid.className = 'li-info';
-        mid.innerHTML = '<strong>' + escapeHtml(titleFn(item)) + '</strong>';
+        const title = opts.titleFn(item);
+        const meta = opts.metaFn ? opts.metaFn(item) : '';
+        mid.innerHTML = '<strong>' + escapeHtml(title) + '</strong>' +
+          (meta ? '<div class="meta">' + escapeHtml(meta) + '</div>' : '');
         row.appendChild(mid);
         row.appendChild(rowActions(type, i));
         box.appendChild(row);
       });
     }
-    simpleList('leadershipList', 'leadership', (x) => (x.name || 'Tanpa nama') + (x.role ? ' — ' + x.role : ''));
-    simpleList('facilitiesList', 'facilities', (x) => x.name || 'Fasilitas');
-    simpleList('teachersList', 'teachers', (x) => (x.name || 'Guru') + (x.subject ? ' · ' + x.subject : ''));
-    simpleList('achievementsList', 'achievements', (x) => (x.title || 'Prestasi') + (x.year ? ' (' + x.year + ')' : ''));
-    simpleList('calendarListAdmin', 'calendar', (x) => (x.title || 'Agenda') + (x.date ? ' — ' + x.date : ''));
-    simpleList('faqList', 'faq', (x) => x.q || 'FAQ');
-    simpleList('ppdbStepsList', 'ppdb.steps', (x) => x.title || 'Tahap');
-    simpleList('ppdbScheduleList', 'ppdb.schedule', (x) => (x.label || 'Jadwal') + (x.date ? ' — ' + x.date : ''));
-    simpleList('feesList', 'fees.items', (x) => (x.name || 'Biaya') + (x.amount ? ' · ' + x.amount : ''));
+    simpleList('leadershipList', 'leadership', {
+      titleFn: (x) => (x.name || 'Tanpa nama') + (x.role ? ' — ' + x.role : ''),
+      metaFn: (x) => x.bio || '',
+      imageKey: 'photo',
+      iconFn: () => '👤'
+    });
+    simpleList('facilitiesList', 'facilities', {
+      titleFn: (x) => x.name || 'Fasilitas',
+      metaFn: (x) => x.desc || '',
+      imageKey: 'image',
+      iconFn: (x) => x.icon || '🏫'
+    });
+    simpleList('teachersList', 'teachers', {
+      titleFn: (x) => x.name || 'Guru',
+      metaFn: (x) => [x.role, x.subject].filter(Boolean).join(' · '),
+      imageKey: 'photo',
+      iconFn: () => '👩‍🏫'
+    });
+    simpleList('achievementsList', 'achievements', {
+      titleFn: (x) => x.title || 'Prestasi',
+      metaFn: (x) => [x.year, x.level, x.desc].filter(Boolean).join(' · '),
+      iconFn: () => '🏆'
+    });
+    simpleList('calendarListAdmin', 'calendar', {
+      titleFn: (x) => x.title || 'Agenda',
+      metaFn: (x) => [x.date, x.endDate, x.type].filter(Boolean).join(' · '),
+      iconFn: () => '📅'
+    });
+    simpleList('faqList', 'faq', {
+      titleFn: (x) => x.q || 'FAQ',
+      metaFn: (x) => x.a || '',
+      iconFn: () => '❓'
+    });
+    simpleList('ppdbStepsList', 'ppdb.steps', {
+      titleFn: (x) => x.title || 'Tahap',
+      metaFn: (x) => x.desc || '',
+      iconFn: () => '①'
+    });
+    simpleList('ppdbScheduleList', 'ppdb.schedule', {
+      titleFn: (x) => x.label || 'Jadwal',
+      metaFn: (x) => [x.date, x.note].filter(Boolean).join(' · '),
+      iconFn: () => '🗓️'
+    });
+    simpleList('feesList', 'fees.items', {
+      titleFn: (x) => x.name || 'Biaya',
+      metaFn: (x) => [x.amount, x.period, x.note].filter(Boolean).join(' · '),
+      iconFn: () => '💰'
+    });
+    simpleList('programsList', 'programs', {
+      titleFn: (x) => x.title || 'Program',
+      metaFn: (x) => x.desc || '',
+      iconFn: (x) => x.icon || '⭐'
+    });
+    simpleList('activitiesList', 'activities', {
+      titleFn: (x) => (x.title || 'Kegiatan') + (x.day ? ' — ' + x.day : ''),
+      metaFn: (x) => x.desc || '',
+      iconFn: () => '📅'
+    });
   }
 
   function renderLists() {
@@ -950,10 +1138,20 @@
       // clear public cache so frontend refetches
       try { localStorage.removeItem('sdit_di_site_cache_v2'); } catch (_) {}
       const cnt = j.counts || {};
+      window.__siteDirty = false;
+      const db2 = document.getElementById('dirtyBanner');
+      if (db2) { db2.hidden = true; db2.style.display = 'none'; }
+      const fac = (data.facilities || []).length;
+      const tea = (data.teachers || []).length;
+      const ach = (data.achievements || []).length;
       status('✓ Tersimpan ke Google Sheets · ' + (j.updatedAt || '') +
         ' · media:' + (cnt.media || 0) +
         ' carousel:' + (cnt.carousel || 0) +
-        ' artikel:' + (cnt.articles || 0));
+        ' artikel:' + (cnt.articles || 0) +
+        ' fasilitas:' + fac +
+        ' guru:' + tea +
+        ' prestasi:' + ach +
+        ' — buka website publik (hard refresh) untuk melihat.');
     } catch (e) {
       status('✗ Gagal simpan ke Sheets: ' + e.message);
     }
@@ -1083,6 +1281,8 @@
   const _bindAdd = (id, type) => { const b = $(id); if (b) b.onclick = () => openEditor(type, -1); };
   _bindAdd('btnAddLeadership', 'leadership');
   _bindAdd('btnAddFacility', 'facilities');
+  _bindAdd('btnAddProgram', 'programs');
+  _bindAdd('btnAddActivity', 'activities');
   _bindAdd('btnAddTeacher', 'teachers');
   _bindAdd('btnAddAchievement', 'achievements');
   _bindAdd('btnAddCalendar', 'calendar');
@@ -1673,27 +1873,42 @@
     const params = new URLSearchParams(location.search);
     const edit = params.get('edit');
     if (!edit) return;
-    const [type, idxStr] = edit.split(':');
-    const index = parseInt(idxStr, 10);
-    if (!type || Number.isNaN(index)) return;
-    // Wait until unlocked & data loaded
+    const colon = edit.lastIndexOf(':');
+    const type = colon >= 0 ? edit.slice(0, colon) : edit;
+    const index = parseInt(colon >= 0 ? edit.slice(colon + 1) : '-1', 10);
+    if (!type || Number.isNaN(index) || index < 0) return;
+
+    const tabFor = {
+      programs: 'profil', activities: 'profil', stats: 'profil',
+      leadership: 'profil', carousel: 'carousel', articles: 'berita',
+      gallery: 'galeri', videos: 'video', media: 'media',
+      announcements: 'pengumuman', facilities: 'akademik', teachers: 'akademik',
+      achievements: 'akademik', calendar: 'akademik', faq: 'ppdb',
+      'ppdb.steps': 'ppdb', 'ppdb.schedule': 'ppdb', 'fees.items': 'ppdb'
+    };
+
     const tryOpen = () => {
-      if (!isAuthed()) return;
-      if (!data || !data[type]) return;
+      if (!isAuthed() || !data) return false;
+      // pastikan array ada
+      try { getListRef(type); } catch (_) { return false; }
+      const tab = tabFor[type];
+      if (tab) {
+        const btn = document.querySelector('.admin-tab[data-tab="' + tab + '"]');
+        if (btn) btn.click();
+      }
       openEditor(type, index);
-      status('Membuka editor untuk ' + type + ' #' + (index + 1));
-      // clean URL
+      status('Membuka editor: ' + type + ' #' + (index + 1));
       try {
         const u = new URL(location.href);
         u.searchParams.delete('edit');
         history.replaceState({}, '', u.pathname + u.search);
       } catch (_) {}
+      return true;
     };
-    // Poll briefly until auth + data ready
     let n = 0;
     const t = setInterval(() => {
       n++;
-      if (isAuthed() && data) { clearInterval(t); tryOpen(); }
+      if (isAuthed() && data && tryOpen()) clearInterval(t);
       if (n > 40) clearInterval(t);
     }, 250);
   }
@@ -1740,6 +1955,9 @@
 
   setupAdminTabs();
   handleDeepLinkEdit();
+  window.addEventListener('beforeunload', (e) => {
+    if (window.__siteDirty) { e.preventDefault(); e.returnValue = ''; }
+  });
   if (isAuthed()) focusPpdbSectionIfNeeded();
 
   // Re-focus after login

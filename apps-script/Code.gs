@@ -143,6 +143,15 @@ function saveSite_(data) {
   if (!data.articles) data.articles = [];
   if (!data.gallery) data.gallery = [];
   if (!data.videos) data.videos = [];
+  if (!data.facilities) data.facilities = [];
+  if (!data.teachers) data.teachers = [];
+  if (!data.achievements) data.achievements = [];
+  if (!data.leadership) data.leadership = [];
+  if (!data.calendar) data.calendar = [];
+  if (!data.faq) data.faq = [];
+  if (!data.visionMission) data.visionMission = { vision: '', mission: [], motto: '' };
+  if (!data.fees) data.fees = { enabled: false, title: '', note: '', items: [] };
+  if (!data.complaint) data.complaint = { enabled: false };
 
   var sheet = getSheet_(SHEET_SITE);
   ensureSiteHeaders_(sheet);
@@ -175,7 +184,13 @@ function saveSite_(data) {
       carousel: (data.carousel || []).length,
       articles: (data.articles || []).length,
       gallery: (data.gallery || []).length,
-      videos: (data.videos || []).length
+      videos: (data.videos || []).length,
+      facilities: (data.facilities || []).length,
+      teachers: (data.teachers || []).length,
+      achievements: (data.achievements || []).length,
+      leadership: (data.leadership || []).length,
+      calendar: (data.calendar || []).length,
+      faq: (data.faq || []).length
     }
   };
 }
