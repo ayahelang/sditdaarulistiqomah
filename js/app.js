@@ -1500,6 +1500,7 @@
         try {
           sessionStorage.setItem('sdit_di_admin_auth_v1', '1');
           sessionStorage.setItem('sdit_di_admin_token_v1', j.token);
+          sessionStorage.setItem('sdit_di_admin_token_at', String(Date.now()));
           sessionStorage.setItem('sdit_di_ppdb_focus', '1');
         } catch (_) {}
         location.href = 'admin/?focus=ppdb';
@@ -1563,8 +1564,378 @@
   }
 
 
+  /* ========== Quick-edit floating popup (Ctrl+Alt+Shift + double-click) ========== */
+  const FE_EDIT_SCHEMAS = {
+    programs: [
+      { key: 'title', label: 'Judul program', type: 'text' },
+      { key: 'icon', label: 'Emoji ikon', type: 'text' },
+      { key: 'desc', label: 'Deskripsi', type: 'textarea' }
+    ],
+    activities: [
+      { key: 'day', label: 'Hari / label waktu', type: 'text' },
+      { key: 'title', label: 'Judul kegiatan', type: 'text' },
+      { key: 'desc', label: 'Deskripsi', type: 'textarea' }
+    ],
+    carousel: [
+      { key: 'title', label: 'Judul', type: 'text' },
+      { key: 'subtitle', label: 'Subtitle', type: 'text' },
+      { key: 'image', label: 'URL / path gambar', type: 'text' },
+      { key: 'imagePosition', label: 'Posisi gambar', type: 'text' },
+      { key: 'cta', label: 'Teks tombol CTA', type: 'text' },
+      { key: 'ctaLink', label: 'Link CTA', type: 'text' }
+    ],
+    facilities: [
+      { key: 'name', label: 'Nama fasilitas', type: 'text' },
+      { key: 'icon', label: 'Emoji ikon', type: 'text' },
+      { key: 'image', label: 'URL gambar', type: 'text' },
+      { key: 'desc', label: 'Deskripsi', type: 'textarea' }
+    ],
+    teachers: [
+      { key: 'name', label: 'Nama', type: 'text' },
+      { key: 'role', label: 'Peran / jabatan', type: 'text' },
+      { key: 'subject', label: 'Mapel / bidang', type: 'text' },
+      { key: 'photo', label: 'URL foto', type: 'text' }
+    ],
+    leadership: [
+      { key: 'name', label: 'Nama', type: 'text' },
+      { key: 'role', label: 'Jabatan', type: 'text' },
+      { key: 'photo', label: 'URL Foto', type: 'text' },
+      { key: 'bio', label: 'Bio singkat', type: 'textarea' }
+    ],
+    achievements: [
+      { key: 'title', label: 'Judul prestasi', type: 'text' },
+      { key: 'year', label: 'Tahun', type: 'text' },
+      { key: 'level', label: 'Tingkat', type: 'text' },
+      { key: 'desc', label: 'Keterangan', type: 'textarea' }
+    ],
+    calendar: [
+      { key: 'title', label: 'Judul agenda', type: 'text' },
+      { key: 'date', label: 'Tanggal mulai', type: 'text' },
+      { key: 'endDate', label: 'Tanggal selesai', type: 'text' },
+      { key: 'type', label: 'Jenis', type: 'text' },
+      { key: 'desc', label: 'Keterangan', type: 'textarea' }
+    ],
+    articles: [
+      { key: 'title', label: 'Judul', type: 'text' },
+      { key: 'category', label: 'Kategori', type: 'text' },
+      { key: 'date', label: 'Tanggal', type: 'text' },
+      { key: 'excerpt', label: 'Ringkasan', type: 'textarea' },
+      { key: 'image', label: 'URL / path gambar', type: 'text' }
+    ],
+    gallery: [
+      { key: 'title', label: 'Judul', type: 'text' },
+      { key: 'image', label: 'URL / path gambar', type: 'text' },
+      { key: 'type', label: 'Tipe', type: 'text' }
+    ],
+    videos: [
+      { key: 'title', label: 'Judul', type: 'text' },
+      { key: 'youtubeId', label: 'YouTube ID', type: 'text' },
+      { key: 'thumb', label: 'URL Thumbnail', type: 'text' }
+    ],
+    stats: [
+      { key: 'value', label: 'Nilai', type: 'text' },
+      { key: 'label', label: 'Label', type: 'text' }
+    ]
+  };
+
+  function feGetList(site, type) {
+    if (!site) return null;
+    if (type === 'fees.items') {
+      if (!site.fees) site.fees = { items: [] };
+      if (!Array.isArray(site.fees.items)) site.fees.items = [];
+      return site.fees.items;
+    }
+    if (type === 'ppdb.steps') {
+      if (!site.ppdb) site.ppdb = {};
+      if (!Array.isArray(site.ppdb.steps)) site.ppdb.steps = [];
+      return site.ppdb.steps;
+    }
+    if (type === 'ppdb.schedule') {
+      if (!site.ppdb) site.ppdb = {};
+      if (!Array.isArray(site.ppdb.schedule)) site.ppdb.schedule = [];
+      return site.ppdb.schedule;
+    }
+    if (!Array.isArray(site[type])) site[type] = [];
+    return site[type];
+  }
+
+  function feRerenderType(type, site) {
+    try {
+      if (type === 'carousel') renderCarousel(site.carousel);
+      else if (type === 'programs') renderPrograms(site.programs);
+      else if (type === 'activities') renderActivities(site.activities);
+      else if (type === 'stats') renderStats(site.stats);
+      else if (type === 'articles') renderArticles(site.articles);
+      else if (type === 'gallery') renderGallery(site.gallery, site.media);
+      else if (type === 'videos') renderVideos(site.videos, site.media);
+      else if (type === 'facilities' || type === 'teachers' || type === 'leadership' ||
+               type === 'achievements' || type === 'calendar') {
+        renderAllOptional(site);
+      }
+    } catch (err) {
+      console.warn('[SDIT] re-render setelah edit:', err);
+    }
+  }
+
+  function ensureFeEditStyles() {
+    if (document.getElementById('feEditStyles')) return;
+    const s = document.createElement('style');
+    s.id = 'feEditStyles';
+    s.textContent = `
+#feEditFloat {
+  position: fixed; z-index: 99999; top: 12vh; left: 50%;
+  transform: translateX(-50%);
+  width: min(420px, calc(100vw - 24px));
+  max-height: min(78vh, 640px);
+  display: flex; flex-direction: column;
+  background: #fff;
+  border: 2px solid rgba(201,162,39,.55);
+  border-radius: 16px;
+  box-shadow: 0 24px 60px rgba(8,76,55,.28);
+  overflow: hidden;
+  font-family: inherit;
+}
+#feEditFloat[hidden] { display: none !important; }
+#feEditFloat .fe-head {
+  display: flex; align-items: center; justify-content: space-between; gap: .5rem;
+  padding: .75rem 1rem;
+  background: linear-gradient(135deg, #0B6E4F, #084C37);
+  color: #fff; cursor: move; user-select: none;
+  flex-shrink: 0;
+}
+#feEditFloat .fe-head strong { font-size: .95rem; }
+#feEditFloat .fe-head .fe-close {
+  border: none; background: rgba(255,255,255,.15); color: #fff;
+  width: 32px; height: 32px; border-radius: 8px; cursor: pointer; font-size: 1.1rem;
+}
+#feEditFloat .fe-head .fe-close:hover { background: rgba(255,255,255,.28); }
+#feEditFloat .fe-body {
+  padding: 1rem 1.1rem; overflow: auto; flex: 1 1 auto;
+}
+#feEditFloat .fe-body label {
+  display: block; font-size: .78rem; font-weight: 700; color: #084C37;
+  margin: .55rem 0 .25rem;
+}
+#feEditFloat .fe-body label:first-child { margin-top: 0; }
+#feEditFloat .fe-body input,
+#feEditFloat .fe-body textarea {
+  width: 100%; box-sizing: border-box;
+  border: 1px solid rgba(11,110,79,.2); border-radius: 10px;
+  padding: .55rem .7rem; font: inherit; font-size: .9rem;
+  background: #f8fbf9;
+}
+#feEditFloat .fe-body textarea { min-height: 88px; resize: vertical; }
+#feEditFloat .fe-foot {
+  display: flex; gap: .5rem; justify-content: flex-end; flex-wrap: wrap;
+  padding: .75rem 1rem; border-top: 1px solid rgba(11,110,79,.1);
+  background: #f8fbf9; flex-shrink: 0;
+}
+#feEditFloat .fe-foot .btn {
+  border: none; border-radius: 10px; padding: .55rem 1rem;
+  font-weight: 700; cursor: pointer; font-size: .88rem;
+}
+#feEditFloat .fe-foot .btn-ghost { background: transparent; color: #084C37; }
+#feEditFloat .fe-foot .btn-primary { background: #0B6E4F; color: #fff; }
+#feEditFloat .fe-status {
+  font-size: .8rem; color: #5B6575; padding: 0 1.1rem .5rem;
+}
+#feEditFloat .fe-status.err { color: #c0392b; }
+#feEditFloat .fe-status.ok { color: #0B6E4F; font-weight: 600; }
+`;
+    document.head.appendChild(s);
+  }
+
+  function closeFeEditFloat() {
+    const box = document.getElementById('feEditFloat');
+    if (box) box.hidden = true;
+  }
+
+  function openFeEditFloat(type, index, token) {
+    ensureFeEditStyles();
+    const site = window.__sditLiveSite;
+    if (!site) {
+      window.alert('Data situs belum dimuat. Refresh halaman lalu coba lagi.');
+      return;
+    }
+    const schema = FE_EDIT_SCHEMAS[type];
+    if (!schema || !schema.length) {
+      window.alert('Tipe "' + type + '" belum mendukung edit cepat di popup. Buka panel admin.');
+      return;
+    }
+    const list = feGetList(site, type);
+    if (!list || index < 0 || index >= list.length) {
+      window.alert('Item tidak ditemukan (index ' + index + ').');
+      return;
+    }
+    const item = Object.assign({}, list[index]);
+
+    let box = document.getElementById('feEditFloat');
+    if (!box) {
+      box = document.createElement('div');
+      box.id = 'feEditFloat';
+      box.innerHTML = `
+        <div class="fe-head" id="feEditDrag">
+          <strong id="feEditTitle">Edit</strong>
+          <button type="button" class="fe-close" id="feEditClose" aria-label="Tutup">×</button>
+        </div>
+        <div class="fe-body" id="feEditFields"></div>
+        <div class="fe-status" id="feEditStatus"></div>
+        <div class="fe-foot">
+          <button type="button" class="btn btn-ghost" id="feEditCancel">Batal</button>
+          <button type="button" class="btn btn-primary" id="feEditSave">Simpan ke Sheets</button>
+        </div>`;
+      document.body.appendChild(box);
+
+      // Drag
+      const head = box.querySelector('#feEditDrag');
+      let dragging = false, ox = 0, oy = 0;
+      head.addEventListener('pointerdown', (e) => {
+        if (e.target.closest('.fe-close')) return;
+        dragging = true;
+        const rect = box.getBoundingClientRect();
+        // switch from centered transform to left/top
+        box.style.transform = 'none';
+        box.style.left = rect.left + 'px';
+        box.style.top = rect.top + 'px';
+        ox = e.clientX - rect.left;
+        oy = e.clientY - rect.top;
+        head.setPointerCapture(e.pointerId);
+      });
+      head.addEventListener('pointermove', (e) => {
+        if (!dragging) return;
+        const x = Math.max(8, Math.min(window.innerWidth - box.offsetWidth - 8, e.clientX - ox));
+        const y = Math.max(8, Math.min(window.innerHeight - 48, e.clientY - oy));
+        box.style.left = x + 'px';
+        box.style.top = y + 'px';
+      });
+      head.addEventListener('pointerup', () => { dragging = false; });
+      head.addEventListener('pointercancel', () => { dragging = false; });
+
+      document.getElementById('feEditClose').onclick = closeFeEditFloat;
+      document.getElementById('feEditCancel').onclick = closeFeEditFloat;
+    }
+
+    box.hidden = false;
+    document.getElementById('feEditTitle').textContent = 'Edit ' + type + ' #' + (index + 1);
+    const fields = document.getElementById('feEditFields');
+    fields.innerHTML = '';
+    schema.forEach((f) => {
+      const lab = document.createElement('label');
+      lab.textContent = f.label;
+      lab.setAttribute('for', 'fe_' + f.key);
+      fields.appendChild(lab);
+      let input;
+      if (f.type === 'textarea') {
+        input = document.createElement('textarea');
+        input.rows = 3;
+      } else {
+        input = document.createElement('input');
+        input.type = 'text';
+      }
+      input.id = 'fe_' + f.key;
+      input.value = item[f.key] != null ? String(item[f.key]) : '';
+      fields.appendChild(input);
+    });
+    const st = document.getElementById('feEditStatus');
+    st.textContent = 'Geser header untuk memindahkan panel. Perubahan langsung ke Google Sheets.';
+    st.className = 'fe-status';
+
+    document.getElementById('feEditSave').onclick = async () => {
+      schema.forEach((f) => {
+        const el = document.getElementById('fe_' + f.key);
+        if (el) item[f.key] = el.value.trim();
+      });
+      list[index] = item;
+      st.textContent = 'Menyimpan…';
+      st.className = 'fe-status';
+      const conf = window.SDIT_CONFIG || {};
+      try {
+        const res = await fetch(conf.sheetsApiUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify({ action: 'saveSite', token: token, data: site })
+        });
+        const j = await res.json();
+        if (!j || !j.ok) {
+          const errMsg = (j && j.error) || 'Gagal simpan';
+          if (/unauthorized|token/i.test(errMsg)) feClearAdminSession();
+          throw new Error(errMsg);
+        }
+        // perpanjang sesi setelah aksi sah
+        try { sessionStorage.setItem('sdit_di_admin_token_at', String(Date.now())); } catch (_) {}
+        window.__sditLiveSite = site;
+        try { localStorage.removeItem('sdit_di_site_cache_v2'); } catch (_) {}
+        feRerenderType(type, site);
+        st.textContent = '✓ Tersimpan. Tampilan diperbarui.';
+        st.className = 'fe-status ok';
+        setTimeout(closeFeEditFloat, 900);
+      } catch (err) {
+        st.textContent = '✗ ' + (err.message || err);
+        st.className = 'fe-status err';
+      }
+    };
+  }
+
+  const FE_ADMIN_SESSION_MS = 20 * 60 * 1000; // 20 menit — lalu minta password lagi
+
+  function feClearAdminSession() {
+    try {
+      sessionStorage.removeItem('sdit_di_admin_auth_v1');
+      sessionStorage.removeItem('sdit_di_admin_token_v1');
+      sessionStorage.removeItem('sdit_di_admin_token_at');
+    } catch (_) {}
+  }
+
+  function feReadValidSessionToken() {
+    try {
+      const tok = sessionStorage.getItem('sdit_di_admin_token_v1');
+      const auth = sessionStorage.getItem('sdit_di_admin_auth_v1');
+      const at = parseInt(sessionStorage.getItem('sdit_di_admin_token_at') || '0', 10);
+      if (!tok || auth !== '1') return null;
+      // Tanpa timestamp (sesi lama) → anggap tidak valid, minta password
+      if (!at || (Date.now() - at) > FE_ADMIN_SESSION_MS) {
+        feClearAdminSession();
+        return null;
+      }
+      return tok;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function feStoreAdminSession(token) {
+    try {
+      sessionStorage.setItem('sdit_di_admin_auth_v1', '1');
+      sessionStorage.setItem('sdit_di_admin_token_v1', token);
+      sessionStorage.setItem('sdit_di_admin_token_at', String(Date.now()));
+    } catch (_) {}
+  }
+
+  async function feEnsureAdminToken() {
+    const existing = feReadValidSessionToken();
+    if (existing) return existing;
+
+    const pass = window.prompt('Password admin untuk mengedit:');
+    if (pass === null) return null;
+    if (!pass) { window.alert('Password wajib.'); return null; }
+    const conf = window.SDIT_CONFIG || {};
+    if (!conf.sheetsApiUrl) { window.alert('sheetsApiUrl belum dikonfigurasi.'); return null; }
+    const res = await fetch(conf.sheetsApiUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'adminLogin', password: pass })
+    });
+    const j = await res.json();
+    if (!j || !j.ok || !j.token) {
+      feClearAdminSession();
+      window.alert((j && j.error) || 'Password salah.');
+      return null;
+    }
+    feStoreAdminSession(j.token);
+    return j.token;
+  }
+
   function setupQuickAdminEdit() {
-    // Visual cue when modifier held
     let armed = false;
     function setArmed(on) {
       armed = on;
@@ -1587,30 +1958,25 @@
       e.preventDefault();
       e.stopPropagation();
       if (typeof e.stopImmediatePropagation === 'function') e.stopImmediatePropagation();
-      const pass = window.prompt('Password admin untuk mengedit item ini:\n(' + key + ')');
-      if (pass === null) return;
-      if (!pass) { window.alert('Password wajib.'); return; }
-      const conf = window.SDIT_CONFIG || {};
-      if (!conf.sheetsApiUrl) { window.alert('sheetsApiUrl belum dikonfigurasi.'); return; }
+
+      const colon = key.lastIndexOf(':');
+      const type = key.slice(0, colon);
+      const index = parseInt(key.slice(colon + 1), 10);
+      if (!type || Number.isNaN(index)) return;
+
       try {
-        const res = await fetch(conf.sheetsApiUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify({ action: 'adminLogin', password: pass })
-        });
-        const j = await res.json();
-        if (!j || !j.ok || !j.token) {
-          window.alert((j && j.error) || 'Password salah.');
-          return;
-        }
+        const token = await feEnsureAdminToken();
+        if (!token) return;
+        // refresh data from sheets so edit is current
         try {
-          sessionStorage.setItem('sdit_di_admin_auth_v1', '1');
-          sessionStorage.setItem('sdit_di_admin_token_v1', j.token);
+          const conf = window.SDIT_CONFIG || {};
+          const r = await fetch(conf.sheetsApiUrl + '?action=getSite', { cache: 'no-store' });
+          const j = await r.json();
+          if (j && j.ok && j.data) window.__sditLiveSite = j.data;
         } catch (_) {}
-        const url = 'admin/?edit=' + encodeURIComponent(key);
-        window.open(url, '_blank');
+        openFeEditFloat(type, index, token);
       } catch (err) {
-        window.alert('Gagal verifikasi: ' + (err.message || err));
+        window.alert('Gagal membuka editor: ' + (err.message || err));
       }
     }, true);
   }
@@ -1641,6 +2007,7 @@
 
     try {
       const data = await loadData();
+      window.__sditLiveSite = data;
       applyBrand(data.brand);
       renderSchool(data.school, data.ppdb);
       renderCarousel(data.carousel);

@@ -39,8 +39,12 @@ function handleRequest(e, method) {
     var publicActions = { list: 1, getSite: 1, ping: 1, publish: 1, getEngagement: 1, like: 1, comment: 1, submitPpdb: 1, getPpdbNotif: 1, adminLogin: 1 };
     if (!publicActions[action]) {
       var clientToken = (e.parameter && e.parameter.token) || body.token || '';
-      if (token && clientToken !== token) {
-        return json_({ ok: false, error: 'Unauthorized — token salah' });
+      // WAJIB: API_TOKEN harus ter-set; tanpa token server → tolak semua aksi tulis
+      if (!token) {
+        return json_({ ok: false, error: 'Unauthorized — API_TOKEN belum di-set di Script properties' });
+      }
+      if (!clientToken || clientToken !== token) {
+        return json_({ ok: false, error: 'Unauthorized — token salah atau sesi tidak valid' });
       }
     }
 
