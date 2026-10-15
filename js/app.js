@@ -185,63 +185,41 @@
     }
     wrap.setAttribute('aria-busy', 'false');
     wrap.classList.add('is-done');
+    // Hapus overlay agar tidak menutup slide berikutnya
     setTimeout(() => {
       try { wrap.remove(); } catch (_) {}
-    }, 500);
-  }
-
-  function resolveMediaUrl(src) {
-    if (!src) return '';
-    const s = String(src).trim();
-    if (!s) return '';
-    if (/^(https?:|data:|blob:|\/)/i.test(s)) return s;
-    // path relatif dari root site
-    return s.replace(/^\.\//, '');
+    }, 400);
+    setTimeout(() => {
+      const leftover = document.getElementById('carouselLoading');
+      if (leftover) try { leftover.remove(); } catch (_) {}
+    }, 1200);
   }
 
   function renderCarousel(items) {
     const track = document.getElementById('carousel');
     const dots = document.getElementById('carouselDots');
-    if (!track || !items || !items.length) {
+    if (!track || !items?.length) {
       finishCarouselTypewriter();
       return;
     }
+    // Jangan hapus loading dulu agar tidak flicker; slide ditambah, loading di-fade
+    const loading = document.getElementById('carouselLoading');
+    // clear slides except loading overlay
     [...track.children].forEach((ch) => {
       if (ch.id !== 'carouselLoading') ch.remove();
     });
     if (dots) dots.innerHTML = '';
-
-    const active = items.filter((i) => i && i.active !== false);
-    // Preload
-    active.forEach((item) => {
-      const src = resolveMediaUrl(item.image);
-      if (!src) return;
-      const im = new Image();
-      im.src = src;
-    });
-
+    const active = (items || []).filter((i) => i && i.active !== false);
     active.forEach((item, idx) => {
-      const src = resolveMediaUrl(item.image);
+      const img = (item.image || '').trim();
       const pos = item.imagePosition || 'center 40%';
-      const bg = el('img', {
-        class: 'slide-bg',
-        src: src || '',
-        alt: '',
-        decoding: 'async',
-        fetchpriority: idx === 0 ? 'high' : 'low'
-      });
-      bg.style.objectPosition = pos;
-      // fallback jika gagal load
-      bg.addEventListener('error', () => {
-        bg.style.display = 'none';
-        console.warn('[SDIT] Carousel image gagal load:', src);
-      });
-
       const slide = el('div', {
         class: 'slide' + (idx === 0 ? ' active' : ''),
-        'data-admin-edit': 'carousel:' + idx
+        'data-admin-edit': 'carousel:' + idx,
+        style: img
+          ? ('background-image:url(\'' + img.replace(/'/g, '%27') + '\');background-position:' + pos)
+          : ('background-position:' + pos)
       }, [
-        bg,
         el('div', { class: 'slide-content' }, [
           el('div', { class: 'eyebrow' }, ['SDIT · Islam Terpadu']),
           el('h1', {}, [item.title || '']),
@@ -250,21 +228,18 @@
         ])
       ]);
       track.appendChild(slide);
-
-      if (dots) {
-        const dot = el('button', {
-          class: 'dot' + (idx === 0 ? ' active' : ''),
-          type: 'button',
-          'aria-label': 'Slide ' + (idx + 1),
-          onclick: () => go(idx)
-        });
-        dots.appendChild(dot);
-      }
+      const dot = el('button', {
+        class: 'dot' + (idx === 0 ? ' active' : ''),
+        type: 'button',
+        'aria-label': 'Slide ' + (idx + 1),
+        onclick: () => go(idx)
+      });
+      dots.appendChild(dot);
     });
 
     let current = 0;
     const slides = () => [...track.querySelectorAll('.slide')];
-    const dotEls = () => (dots ? [...dots.querySelectorAll('.dot')] : []);
+    const dotEls = () => [...dots.querySelectorAll('.dot')];
     function go(n) {
       const s = slides();
       if (!s.length) return;
@@ -273,6 +248,7 @@
       dotEls().forEach((x, i) => x.classList.toggle('active', i === current));
     }
     setInterval(() => go(current + 1), 6000);
+    // Biarkan salam sempat terbaca, lalu fade → carousel
     setTimeout(() => finishCarouselTypewriter(), 450);
   }
 
