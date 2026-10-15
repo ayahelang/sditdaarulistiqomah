@@ -185,14 +185,9 @@
     }
     wrap.setAttribute('aria-busy', 'false');
     wrap.classList.add('is-done');
-    // Hapus overlay agar tidak menutup slide berikutnya
     setTimeout(() => {
       try { wrap.remove(); } catch (_) {}
-    }, 400);
-    setTimeout(() => {
-      const leftover = document.getElementById('carouselLoading');
-      if (leftover) try { leftover.remove(); } catch (_) {}
-    }, 1200);
+    }, 500);
   }
 
   function renderCarousel(items) {
@@ -209,21 +204,16 @@
       if (ch.id !== 'carouselLoading') ch.remove();
     });
     if (dots) dots.innerHTML = '';
-    const active = (items || []).filter((i) => i && i.active !== false);
+    const active = items.filter((i) => i.active !== false);
     active.forEach((item, idx) => {
-      const img = (item.image || '').trim();
-      const pos = item.imagePosition || 'center 40%';
       const slide = el('div', {
         class: 'slide' + (idx === 0 ? ' active' : ''),
-        'data-admin-edit': 'carousel:' + idx,
-        style: img
-          ? ('background-image:url(\'' + img.replace(/'/g, '%27') + '\');background-position:' + pos)
-          : ('background-position:' + pos)
+        style: `background-image:url('${item.image}');background-position:${item.imagePosition||'center 40%'}`
       }, [
         el('div', { class: 'slide-content' }, [
           el('div', { class: 'eyebrow' }, ['SDIT · Islam Terpadu']),
-          el('h1', {}, [item.title || '']),
-          el('p', {}, [item.subtitle || '']),
+          el('h1', {}, [item.title]),
+          el('p', {}, [item.subtitle]),
           el('a', { class: 'btn btn-accent', href: item.ctaLink || '#ppdb' }, [item.cta || 'Selengkapnya'])
         ])
       ]);
@@ -256,8 +246,8 @@
     const box = document.getElementById('stats');
     if (!box || !stats) return;
     box.innerHTML = '';
-    stats.forEach((s, idx) => {
-      box.appendChild(el('div', { class: 'stat-card', 'data-admin-edit': 'stats:' + idx }, [
+    stats.forEach((s) => {
+      box.appendChild(el('div', { class: 'stat-card' }, [
         el('strong', {}, [s.value]),
         el('span', {}, [s.label])
       ]));
@@ -268,8 +258,8 @@
     const box = document.getElementById('programs');
     if (!box || !programs) return;
     box.innerHTML = '';
-    programs.forEach((p, idx) => {
-      box.appendChild(el('article', { class: 'card program-card', 'data-admin-edit': 'programs:' + idx }, [
+    programs.forEach((p) => {
+      box.appendChild(el('article', { class: 'card program-card' }, [
         el('div', { class: 'icon' }, [p.icon || '⭐']),
         el('h3', {}, [p.title]),
         el('p', {}, [p.desc])
@@ -738,8 +728,8 @@
     const box = document.getElementById('activities');
     if (!box || !list) return;
     box.innerHTML = '';
-    list.forEach((a, idx) => {
-      box.appendChild(el('div', { class: 'activity-item', 'data-admin-edit': 'activities:' + idx }, [
+    list.forEach((a) => {
+      box.appendChild(el('div', { class: 'activity-item' }, [
         el('div', { class: 'day' }, [a.day]),
         el('div', {}, [
           el('h3', {}, [a.title]),
@@ -782,14 +772,6 @@
         more.hidden = true;
         more.setAttribute('hidden', '');
         more.classList.remove('open');
-        const btn = document.getElementById('navMoreBtn');
-        if (btn) btn.setAttribute('aria-expanded', 'false');
-      }
-      // Selalu mulai terlipat saat data di-render ulang
-      if (anyMore) {
-        more.classList.remove('open');
-        const btn = document.getElementById('navMoreBtn');
-        if (btn) btn.setAttribute('aria-expanded', 'false');
       }
     }
   }
@@ -841,14 +823,14 @@
     const grid = document.getElementById('leadershipGrid');
     if (!grid) return list.length > 0;
     grid.innerHTML = '';
-    list.forEach((p, idx) => {
+    list.forEach((p) => {
       const av = el('div', { class: 'avatar' });
       if (hasText(p.photo)) {
         av.appendChild(el('img', { src: p.photo, alt: p.name || '' }));
       } else {
         av.textContent = (p.name || '?').charAt(0).toUpperCase();
       }
-      grid.appendChild(el('article', { class: 'card person-card', 'data-admin-edit': 'leadership:' + idx }, [
+      grid.appendChild(el('article', { class: 'card person-card' }, [
         av,
         el('div', { class: 'role' }, [p.role || '']),
         el('h3', {}, [p.name || '']),
@@ -858,31 +840,20 @@
     return list.length > 0;
   }
 
-    function renderFacilities(list) {
-    list = (list || []).filter((x) => hasText(x && x.name));
+  function renderFacilities(list) {
+    list = (list || []).filter((x) => hasText(x.name));
     setSectionVisible('fasilitas', list.length > 0);
     const grid = document.getElementById('facilitiesGrid');
-    if (!grid) {
-      console.warn('[SDIT] #facilitiesGrid tidak ditemukan');
-      return list.length > 0;
-    }
+    if (!grid) return list.length > 0;
     grid.innerHTML = '';
-    list.forEach((f, idx) => {
-      const bodyKids = [];
-      if (hasText(f.icon)) bodyKids.push(el('div', { class: 'icon' }, [f.icon]));
-      bodyKids.push(el('h3', {}, [f.name || '']));
-      if (hasText(f.desc)) bodyKids.push(el('p', {}, [f.desc]));
+    list.forEach((f) => {
       const kids = [];
-      if (hasText(f.image)) {
-        kids.push(el('img', { src: f.image, alt: f.name || '', loading: 'lazy' }));
-      }
-      kids.push(el('div', { class: 'facility-body' }, bodyKids));
-      grid.appendChild(el('article', {
-        class: 'card facility-card',
-        'data-admin-edit': 'facilities:' + idx
-      }, kids));
+      if (hasText(f.image)) kids.push(el('img', { src: f.image, alt: f.name || '' }));
+      if (hasText(f.icon)) kids.push(el('div', { class: 'icon' }, [f.icon]));
+      kids.push(el('h3', {}, [f.name || '']));
+      if (hasText(f.desc)) kids.push(el('p', {}, [f.desc]));
+      grid.appendChild(el('article', { class: 'card facility-card' }, kids));
     });
-    console.info('[SDIT] Fasilitas ditampilkan:', list.length);
     return list.length > 0;
   }
 
@@ -892,12 +863,12 @@
     const grid = document.getElementById('teachersGrid');
     if (!grid) return list.length > 0;
     grid.innerHTML = '';
-    list.forEach((t, idx) => {
+    list.forEach((t) => {
       const av = el('div', { class: 'avatar' });
       if (hasText(t.photo)) av.appendChild(el('img', { src: t.photo, alt: t.name || '' }));
       else av.textContent = (t.name || '?').charAt(0).toUpperCase();
       const role = [t.role, t.subject].filter(hasText).join(' · ');
-      grid.appendChild(el('article', { class: 'card person-card', 'data-admin-edit': 'teachers:' + idx }, [
+      grid.appendChild(el('article', { class: 'card person-card' }, [
         av,
         role ? el('div', { class: 'role' }, [role]) : null,
         el('h3', {}, [t.name || ''])
@@ -912,14 +883,14 @@
     const grid = document.getElementById('achievementsGrid');
     if (!grid) return list.length > 0;
     grid.innerHTML = '';
-    list.forEach((a, idx) => {
+    list.forEach((a) => {
       const kids = [];
       if (hasText(a.year) || hasText(a.level)) {
         kids.push(el('span', { class: 'year-badge' }, [[a.year, a.level].filter(hasText).join(' · ')]));
       }
       kids.push(el('h3', {}, [a.title || '']));
       if (hasText(a.desc)) kids.push(el('p', {}, [a.desc]));
-      grid.appendChild(el('article', { class: 'card achieve-card', 'data-admin-edit': 'achievements:' + idx }, kids));
+      grid.appendChild(el('article', { class: 'card achieve-card' }, kids));
     });
     return list.length > 0;
   }
@@ -930,9 +901,9 @@
     const box = document.getElementById('calendarList');
     if (!box) return list.length > 0;
     box.innerHTML = '';
-    list.forEach((c, idx) => {
+    list.forEach((c) => {
       const dateStr = [c.date, c.endDate].filter(hasText).join(' – ');
-      box.appendChild(el('div', { class: 'calendar-item', 'data-admin-edit': 'calendar:' + idx }, [
+      box.appendChild(el('div', { class: 'calendar-item' }, [
         el('div', {}, [
           el('div', { class: 'date' }, [dateStr || '—']),
           hasText(c.type) ? el('div', { class: 'type' }, [c.type]) : null
@@ -1050,9 +1021,8 @@
     if (stepsWrap && stepsOl) {
       if (steps.length) {
         stepsOl.innerHTML = '';
-        steps.forEach((s, idx) => {
+        steps.forEach((s) => {
           const li = document.createElement('li');
-          li.setAttribute('data-admin-edit', 'ppdb.steps:' + idx);
           li.innerHTML = '<strong>' + escapeHtml(s.title) + '</strong>' +
             (hasText(s.desc) ? ' — ' + escapeHtml(s.desc) : '');
           stepsOl.appendChild(li);
@@ -1067,8 +1037,8 @@
     if (schWrap && schBox) {
       if (schedule.length) {
         schBox.innerHTML = '';
-        schedule.forEach((s, idx) => {
-          schBox.appendChild(el('div', { class: 'calendar-item', 'data-admin-edit': 'ppdb.schedule:' + idx }, [
+        schedule.forEach((s) => {
+          schBox.appendChild(el('div', { class: 'calendar-item' }, [
             el('div', { class: 'date' }, [s.date || '—']),
             el('div', {}, [
               el('strong', {}, [s.label || '']),
@@ -1086,10 +1056,9 @@
     if (faqWrap && faqBox) {
       if (faqList.length) {
         faqBox.innerHTML = '';
-        faqList.forEach((f, idx) => {
+        faqList.forEach((f) => {
           const d = document.createElement('details');
           d.className = 'faq-item';
-          d.setAttribute('data-admin-edit', 'faq:' + idx);
           d.innerHTML = '<summary>' + escapeHtml(f.q) + '</summary><p>' + escapeHtml(f.a) + '</p>';
           faqBox.appendChild(d);
         });
@@ -1110,14 +1079,6 @@
   }
 
   function renderAllOptional(data) {
-    data = data || {};
-    console.info('[SDIT] Optional sections:', {
-      facilities: (data.facilities || []).length,
-      teachers: (data.teachers || []).length,
-      achievements: (data.achievements || []).length,
-      leadership: (data.leadership || []).length,
-      calendar: (data.calendar || []).length
-    });
     const flags = {
       visionMission: renderVisionMission(data.visionMission),
       leadership: renderLeadership(data.leadership),
@@ -1553,9 +1514,6 @@
     const more = document.getElementById('navMore');
     const moreBtn = document.getElementById('navMoreBtn');
     if (more && moreBtn) {
-      // Default terlipat
-      more.classList.remove('open');
-      moreBtn.setAttribute('aria-expanded', 'false');
       moreBtn.addEventListener('click', (e) => {
         e.preventDefault();
         e.stopPropagation();
@@ -1567,13 +1525,6 @@
           more.classList.remove('open');
           moreBtn.setAttribute('aria-expanded', 'false');
         }
-      });
-      // Tutup lagi saat link submenu diklik
-      more.querySelectorAll('a').forEach((a) => {
-        a.addEventListener('click', () => {
-          more.classList.remove('open');
-          moreBtn.setAttribute('aria-expanded', 'false');
-        });
       });
     }
   }
@@ -1667,19 +1618,12 @@
       renderVideos(data.videos, data.media);
       renderActivities(data.activities);
       renderAnnouncements(data.announcements);
-      renderAllOptional(data);
       setupPpdbForm();
       setupPpdbNotifBell();
       // Tag sections that are not item-level
-      document.querySelectorAll('#ppdb .ppdb-box').forEach((node) => {
-        node.setAttribute('data-admin-edit', 'ppdbMeta:0');
+      document.querySelectorAll('#ppdb, .ppdb-box').forEach((node) => {
+        node.setAttribute('data-admin-edit', 'school:0');
       });
-      const visi = document.getElementById('visi');
-      if (visi && !visi.hidden) visi.setAttribute('data-admin-edit', 'visionMission:0');
-      const biaya = document.getElementById('biaya');
-      if (biaya && !biaya.hidden) biaya.setAttribute('data-admin-edit', 'feesMeta:0');
-      const complaint = document.getElementById('complaintCard');
-      if (complaint && !complaint.hidden) complaint.setAttribute('data-admin-edit', 'complaint:0');
     } catch (err) {
       console.error(err);
       const h = document.getElementById('schoolName');
