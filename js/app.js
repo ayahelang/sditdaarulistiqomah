@@ -1736,6 +1736,9 @@
 }
 #feEditFloat .fe-foot .btn-ghost { background: transparent; color: #084C37; }
 #feEditFloat .fe-foot .btn-primary { background: #0B6E4F; color: #fff; }
+#feEditFloat .fe-foot .btn-danger { background: #c0392b; color: #fff; }
+#feEditFloat .fe-foot .btn-dup { background: #fff; color: #084C37; border: 1px solid rgba(11,110,79,.35); }
+#feEditFloat .fe-foot .fe-left { margin-right: auto; display: flex; gap: .4rem; flex-wrap: wrap; }
 #feEditFloat .fe-status {
   font-size: .8rem; color: #5B6575; padding: 0 1.1rem .5rem;
 }
@@ -1781,6 +1784,10 @@
         <div class="fe-body" id="feEditFields"></div>
         <div class="fe-status" id="feEditStatus"></div>
         <div class="fe-foot">
+          <div class="fe-left">
+            <button type="button" class="btn btn-danger" id="feEditDelete">Hapus</button>
+            <button type="button" class="btn btn-dup" id="feEditDup">Duplikat</button>
+          </div>
           <button type="button" class="btn btn-ghost" id="feEditCancel">Batal</button>
           <button type="button" class="btn btn-primary" id="feEditSave">Simpan ke Sheets</button>
         </div>`;
@@ -1837,15 +1844,10 @@
       fields.appendChild(input);
     });
     const st = document.getElementById('feEditStatus');
-    st.textContent = 'Geser header untuk memindahkan panel. Perubahan langsung ke Google Sheets.';
+    st.textContent = 'Geser header untuk memindahkan panel. Simpan / Hapus / Duplikat langsung ke Google Sheets.';
     st.className = 'fe-status';
 
-    document.getElementById('feEditSave').onclick = async () => {
-      schema.forEach((f) => {
-        const el = document.getElementById('fe_' + f.key);
-        if (el) item[f.key] = el.value.trim();
-      });
-      list[index] = item;
+    async function fePersist(successMsg, closeAfter) {
       st.textContent = 'Menyimpan…';
       st.className = 'fe-status';
       const conf = window.SDIT_CONFIG || {};
@@ -1861,17 +1863,56 @@
           if (/unauthorized|token/i.test(errMsg)) feClearAdminSession();
           throw new Error(errMsg);
         }
-        // perpanjang sesi setelah aksi sah
         try { sessionStorage.setItem('sdit_di_admin_token_at', String(Date.now())); } catch (_) {}
         window.__sditLiveSite = site;
         try { localStorage.removeItem('sdit_di_site_cache_v2'); } catch (_) {}
         feRerenderType(type, site);
-        st.textContent = '✓ Tersimpan. Tampilan diperbarui.';
+        st.textContent = successMsg;
         st.className = 'fe-status ok';
-        setTimeout(closeFeEditFloat, 900);
+        if (closeAfter) setTimeout(closeFeEditFloat, 900);
+        return true;
       } catch (err) {
         st.textContent = '✗ ' + (err.message || err);
         st.className = 'fe-status err';
+        return false;
+      }
+    }
+
+    document.getElementById('feEditSave').onclick = async () => {
+      schema.forEach((f) => {
+        const el = document.getElementById('fe_' + f.key);
+        if (el) item[f.key] = el.value.trim();
+      });
+      list[index] = item;
+      await fePersist('✓ Tersimpan. Tampilan diperbarui.', true);
+    };
+
+    document.getElementById('feEditDup').onclick = async () => {
+      // Ambil nilai form terkini
+      schema.forEach((f) => {
+        const el = document.getElementById('fe_' + f.key);
+        if (el) item[f.key] = el.value.trim();
+      });
+      const copy = Object.assign({}, item);
+      // id unik agar tidak bentrok
+      copy.id = String(type).replace(/\W/g, '').slice(0, 6) + Date.now();
+      if (copy.title) copy.title = String(copy.title) + ' (salinan)';
+      else if (copy.name) copy.name = String(copy.name) + ' (salinan)';
+      list.splice(index + 1, 0, copy);
+      const ok = await fePersist('✓ Diduplikat. Salinan ditambahkan.', true);
+      if (!ok) {
+        // rollback local if failed
+        list.splice(index + 1, 1);
+      }
+    };
+
+    document.getElementById('feEditDelete').onclick = async () => {
+      if (!window.confirm('Hapus item ini secara permanen dari website?')) return;
+      list.splice(index, 1);
+      const ok = await fePersist('✓ Dihapus. Tampilan diperbarui.', true);
+      if (!ok) {
+        // tidak bisa rollback mudah tanpa salinan — refresh dari sheets dianjurkan
+        st.textContent = (st.textContent || '') + ' Refresh halaman jika tampilan tidak sesuai.';
       }
     };
   }
