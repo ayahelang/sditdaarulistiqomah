@@ -1574,3 +1574,57 @@ body.admin-edit-armed [data-admin-edit]:hover {
   .media-toolbar { flex-direction: column; align-items: stretch; }
   .media-toolbar-sort { align-self: flex-start; }
 }
+
+/* Campuran card + grup tertutup: satu grid 3 kolom */
+.gg-mixed-grid .gallery-group.is-collapsed {
+  margin-top: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+.gg-mixed-grid .gg-summary,
+.gg-collapsed-grid .gg-summary {
+  flex-direction: column;
+  align-items: stretch;
+  height: 100%;
+  min-height: 0;
+  padding: 0;
+  gap: 0;
+  overflow: hidden;
+  position: relative;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  border: 1px solid rgba(11,110,79,.08);
+  background: #fff;
+}
+.gg-mixed-grid .gg-summary-thumb,
+.gg-collapsed-grid .gg-summary-thumb {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 4 / 3;
+  border-radius: 0;
+  flex-shrink: 0;
+}
+.gg-mixed-grid .gg-summary-meta,
+.gg-collapsed-grid .gg-summary-meta {
+  padding: .65rem .8rem .85rem;
+  flex: 1;
+}
+.gg-mixed-grid .gg-summary-name,
+.gg-collapsed-grid .gg-summary-name {
+  font-size: .95rem;
+  line-height: 1.25;
+}
+.gg-mixed-grid .gg-summary-chevron,
+.gg-collapsed-grid .gg-summary-chevron {
+  position: absolute;
+  right: .65rem;
+  bottom: .55rem;
+  opacity: .65;
+  font-size: 1rem;
+}
+/* Grup terbuka tetap full width di bawah */
+.gallery-stack > .gallery-group.is-open {
+  width: 100%;
+  margin-top: 1.5rem;
+}

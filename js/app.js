@@ -482,8 +482,9 @@
   function renderGallery(items, media, groups) {
     const box = document.getElementById('gallery');
     if (!box) return;
+
     const list = [];
-    (items || []).forEach((g, idx) => {
+    (items || []).forEach(function (g, idx) {
       list.push({
         title: g.title,
         image: g.image,
@@ -494,7 +495,7 @@
         _edit: 'gallery:' + idx
       });
     });
-    (media || []).forEach((m, idx) => {
+    (media || []).forEach(function (m, idx) {
       if (m.type === 'foto' || m.type === 'image') {
         list.push({
           title: m.title || 'Foto',
@@ -509,155 +510,184 @@
         });
       }
     });
-    _lists.galleryAll = list;
+
     ensureMediaToolbar('gallery', box);
     window.__rerenderGallery = function () {
       renderGallery(items, media, groups);
     };
-    const filteredG = applyMediaFilter(list, 'gallery');
-    _lists.gallery = filteredG;
-    // reset shown when filter shrinks below current
-    if (shown.gallery > filteredG.length) shown.gallery = filteredG.length;
-    initShown('gallery', filteredG.length);
 
     const activeGroups = (groups || [])
       .filter(function (gg) { return gg && gg.active !== false; })
       .slice()
       .sort(function (a, b) { return (a.order || 0) - (b.order || 0); });
 
-    const paint = () => {
-      box.innerHTML = '';
-      // #gallery di HTML punya class gallery-grid; untuk grup bersarang
-      // class itu membuat tiap grup jadi "sel" kecil. Ganti jadi stack penuh.
-      box.className = 'gallery-stack';
+    const q = ((_mediaFilter.gallery && _mediaFilter.gallery.q) || '').trim().toLowerCase();
 
-      // 1) Flat gallery items (existing)
-      if (_lists.gallery.length) {
-        const flatWrap = el('div', { class: 'gallery-group' }, []);
-        if (activeGroups.length) {
-          flatWrap.appendChild(el('h3', { class: 'gallery-group-title' }, [
-            'Galeri',
-            el('span', { class: 'gg-count' }, [String(_lists.gallery.length) + ' foto'])
-          ]));
-        }
-        const flatGrid = el('div', { class: 'gallery-grid' }, []);
-        _lists.gallery.slice(0, shown.gallery).forEach((g) => {
-          const card = makeGalleryCard(g);
-          flatGrid.appendChild(card);
-          attachEngagement(card, 'gallery', g._edit || ('gallery-' + Math.random()));
-        });
-        flatWrap.appendChild(flatGrid);
-        box.appendChild(flatWrap);
+    // Tile campuran: card biasa + grup tertutup (bersaing di sort yang sama)
+    const tiles = [];
+
+    list.forEach(function (card) {
+      if (q) {
+        const hay = [card.title, card.desc, card.source, card.url].join(' ').toLowerCase();
+        if (hay.indexOf(q) === -1) return;
       }
-      updateMoreBtn('galleryMoreWrap', 'gallery');
+      tiles.push({
+        kind: 'card',
+        date: card.date || '',
+        _idx: card._idx,
+        card: card
+      });
+    });
 
-      // 2) Gallery groups (folder-based) — default tertutup, collapsible
-      // Batch grup tertutup ke grid 3 kolom (lebar = card biasa)
-      let collapsedBatch = null;
-      function flushCollapsedBatch() {
-        if (collapsedBatch && collapsedBatch.childNodes.length) {
-          box.appendChild(collapsedBatch);
-        }
-        collapsedBatch = null;
+    activeGroups.forEach(function (gg, gIdx) {
+      const files = Array.isArray(gg.files) ? gg.files : [];
+      if (!files.length) return;
+      const gKey = String(gg.id || gg.folder || gg.name || gIdx);
+      if (q) {
+        const hay = [gg.name, gg.folder].concat(files.map(function (f) {
+          return (f.title || '') + ' ' + (f.file || '') + ' ' + (f.desc || '');
+        })).join(' ').toLowerCase();
+        if (hay.indexOf(q) === -1) return;
       }
+      // Grup terbuka tidak masuk grid campuran (ditampilkan full-width terpisah)
+      if (_ggOpen[gKey]) return;
+      tiles.push({
+        kind: 'group',
+        date: gg.date || '',
+        _idx: 200000 + (typeof gg.order === 'number' ? gg.order : gIdx),
+        gg: gg,
+        gIdx: gIdx,
+        gKey: gKey
+      });
+    });
 
-      activeGroups.forEach(function (gg, gIdx) {
-        const files = Array.isArray(gg.files) ? gg.files : [];
-        if (!files.length) return;
-        const folder = (gg.folder || '').replace(/\/+$/, '');
-        const gKey = String(gg.id || gg.folder || gg.name || gIdx);
-        const isOpen = !!_ggOpen[gKey];
+    // Sort tile campuran (default newest)
+    const sortDir = ((_mediaFilter.gallery && _mediaFilter.gallery.sort) === 'oldest') ? 1 : -1;
+    tiles.sort(function (a, b) {
+      const da = parseItemDate(a);
+      const db = parseItemDate(b);
+      if (da !== db) return (da - db) * sortDir;
+      return ((a._idx || 0) - (b._idx || 0)) * sortDir;
+    });
 
-        // filter grup by search (nama / folder / file titles)
-        const q = ((_mediaFilter.gallery && _mediaFilter.gallery.q) || '').trim().toLowerCase();
-        if (q) {
-          const hay = [gg.name, gg.folder].concat(files.map(function (f) {
-            return (f.title || '') + ' ' + (f.file || '') + ' ' + (f.desc || '');
-          })).join(' ').toLowerCase();
-          if (hay.indexOf(q) === -1) return;
-        }
+    _lists.gallery = tiles;
+    if (shown.gallery > tiles.length) shown.gallery = tiles.length;
+    initShown('gallery', tiles.length);
 
-        function fileToCard(f, fIdx) {
-          const fname = f.file || f.name || '';
-          const imgPath = folder ? (folder + '/' + fname) : fname;
-          const title = (f.title && String(f.title).trim()) || titleFromFilename(fname);
-          const desc = (f.desc && String(f.desc).trim()) || '';
-          return {
-            title: title,
-            image: imgPath,
-            desc: desc,
-            type: 'foto',
-            _edit: 'galleryGroupFile:' + gIdx + ':' + fIdx
-          };
-        }
+    function fileToCard(gg, f, fIdx, gIdx) {
+      const folder = (gg.folder || '').replace(/\/+$/, '');
+      const fname = f.file || f.name || '';
+      const imgPath = folder ? (folder + '/' + fname) : fname;
+      const title = (f.title && String(f.title).trim()) || titleFromFilename(fname);
+      const desc = (f.desc && String(f.desc).trim()) || '';
+      return {
+        title: title,
+        image: imgPath,
+        desc: desc,
+        type: 'foto',
+        _edit: 'galleryGroupFile:' + gIdx + ':' + fIdx
+      };
+    }
 
-        // sort files in group (newest default = reverse index / by name)
-        let fileOrder = files.map(function (f, i) { return { f: f, i: i }; });
-        const gSort = (_mediaFilter.gallery && _mediaFilter.gallery.sort) || 'newest';
-        fileOrder.sort(function (a, b) {
-          const na = String(a.f.file || a.f.name || '');
-          const nb = String(b.f.file || b.f.name || '');
-          if (gSort === 'oldest') return na.localeCompare(nb) || (a.i - b.i);
-          return nb.localeCompare(na) || (b.i - a.i);
-        });
-
-        const groupEl = el('div', {
-          class: 'gallery-group' + (isOpen ? ' is-open' : ' is-collapsed'),
-          'data-gg-key': gKey
-        }, []);
-
-        if (!isOpen) {
-          const first = fileToCard(fileOrder[0].f, fileOrder[0].i);
-          const summary = el('button', {
-            type: 'button',
-            class: 'gg-summary',
-            title: 'Buka grup ' + (gg.name || ''),
-            onclick: function (ev) {
-              ev.preventDefault();
-              _ggOpen[gKey] = true;
-              if (!_ggShown[gKey] || _ggShown[gKey] < PAGE.galleryGroup) {
-                _ggShown[gKey] = Math.min(PAGE.galleryGroup, files.length);
-              }
-              paint();
-            }
-          }, []);
-
-          const thumbWrap = el('div', { class: 'gg-summary-thumb' }, []);
-          if (first.image) {
-            thumbWrap.appendChild(el('img', { src: first.image, alt: first.title || '', loading: 'lazy' }));
-          } else {
-            thumbWrap.appendChild(el('div', { class: 'gallery-placeholder' }, ['Foto']));
+    function makeGroupSummary(gg, gIdx, gKey) {
+      const files = Array.isArray(gg.files) ? gg.files : [];
+      const first = fileToCard(gg, files[0], 0, gIdx);
+      const groupEl = el('div', {
+        class: 'gallery-group is-collapsed',
+        'data-gg-key': gKey
+      }, []);
+      const summary = el('button', {
+        type: 'button',
+        class: 'gg-summary',
+        title: 'Buka grup ' + (gg.name || ''),
+        onclick: function (ev) {
+          ev.preventDefault();
+          _ggOpen[gKey] = true;
+          if (!_ggShown[gKey] || _ggShown[gKey] < PAGE.galleryGroup) {
+            _ggShown[gKey] = Math.min(PAGE.galleryGroup, files.length);
           }
-          summary.appendChild(thumbWrap);
-          summary.appendChild(el('div', { class: 'gg-summary-meta' }, [
-            el('div', { class: 'gg-summary-name' }, [gg.name || 'Galeri']),
-            el('div', { class: 'gg-summary-count' }, [String(files.length) + ' foto']),
-            el('div', { class: 'gg-summary-hint' }, ['Klik untuk membuka'])
-          ]));
-          summary.appendChild(el('span', { class: 'gg-summary-chevron', 'aria-hidden': 'true' }, ['▸']));
-          groupEl.appendChild(summary);
+          paint();
+        }
+      }, []);
+      const thumbWrap = el('div', { class: 'gg-summary-thumb' }, []);
+      if (first.image) {
+        thumbWrap.appendChild(el('img', { src: first.image, alt: first.title || '', loading: 'lazy' }));
+      } else {
+        thumbWrap.appendChild(el('div', { class: 'gallery-placeholder' }, ['Foto']));
+      }
+      summary.appendChild(thumbWrap);
+      summary.appendChild(el('div', { class: 'gg-summary-meta' }, [
+        el('div', { class: 'gg-summary-name' }, [gg.name || 'Galeri']),
+        el('div', { class: 'gg-summary-count' }, [String(files.length) + ' foto']),
+        el('div', { class: 'gg-summary-hint' }, ['Klik untuk membuka'])
+      ]));
+      summary.appendChild(el('span', { class: 'gg-summary-chevron', 'aria-hidden': 'true' }, ['▸']));
+      groupEl.appendChild(summary);
+      return groupEl;
+    }
 
-          if (!collapsedBatch) {
-            collapsedBatch = el('div', { class: 'gallery-grid gg-collapsed-grid' }, []);
+    function makeOpenGroup(gg, gIdx, gKey) {
+      const files = Array.isArray(gg.files) ? gg.files : [];
+      let fileOrder = files.map(function (f, i) { return { f: f, i: i }; });
+      const gSort = (_mediaFilter.gallery && _mediaFilter.gallery.sort) || 'newest';
+      fileOrder.sort(function (a, b) {
+        const na = String(a.f.file || a.f.name || '');
+        const nb = String(b.f.file || b.f.name || '');
+        if (gSort === 'oldest') return na.localeCompare(nb) || (a.i - b.i);
+        return nb.localeCompare(na) || (b.i - a.i);
+      });
+
+      if (!_ggShown[gKey] || _ggShown[gKey] < 1) {
+        _ggShown[gKey] = Math.min(PAGE.galleryGroup, files.length);
+      }
+      if (_ggShown[gKey] > files.length) _ggShown[gKey] = files.length;
+      const nShow = _ggShown[gKey];
+
+      const groupEl = el('div', {
+        class: 'gallery-group is-open',
+        'data-gg-key': gKey
+      }, []);
+      const titleRow = el('div', { class: 'gallery-group-head' }, []);
+      titleRow.appendChild(el('h3', { class: 'gallery-group-title' }, [
+        gg.name || 'Galeri',
+        el('span', { class: 'gg-count' }, [String(files.length) + ' foto'])
+      ]));
+      titleRow.appendChild(el('button', {
+        type: 'button',
+        class: 'btn btn-ghost gg-fold-btn',
+        onclick: function (ev) {
+          ev.preventDefault();
+          _ggOpen[gKey] = false;
+          paint();
+        }
+      }, ['▴ Lipat grup']));
+      groupEl.appendChild(titleRow);
+
+      const grid = el('div', { class: 'gallery-grid' }, []);
+      fileOrder.slice(0, nShow).forEach(function (pair) {
+        const g = fileToCard(gg, pair.f, pair.i, gIdx);
+        const card = makeGalleryCard(g);
+        grid.appendChild(card);
+        attachEngagement(card, 'gallery', g._edit);
+      });
+      groupEl.appendChild(grid);
+
+      const left = files.length - nShow;
+      if (left > 0) {
+        const moreWrap = el('div', { class: 'load-more-wrap gg-more-wrap' }, []);
+        moreWrap.appendChild(el('button', {
+          type: 'button',
+          class: 'btn btn-ghost load-more-btn',
+          onclick: function (ev) {
+            ev.preventDefault();
+            _ggShown[gKey] = Math.min(nShow + PAGE.galleryGroup, files.length);
+            paint();
           }
-          collapsedBatch.appendChild(groupEl);
-          return;
-        }
-
-        // terbuka → tutup batch collapsed sebelumnya
-        flushCollapsedBatch();
-
-        if (!_ggShown[gKey] || _ggShown[gKey] < 1) {
-          _ggShown[gKey] = Math.min(PAGE.galleryGroup, files.length);
-        }
-        if (_ggShown[gKey] > files.length) _ggShown[gKey] = files.length;
-
-        const titleRow = el('div', { class: 'gallery-group-head' }, []);
-        titleRow.appendChild(el('h3', { class: 'gallery-group-title' }, [
-          gg.name || 'Galeri',
-          el('span', { class: 'gg-count' }, [String(files.length) + ' foto'])
-        ]));
-        titleRow.appendChild(el('button', {
+        }, ['Muat lebih banyak (' + left + ' tersisa)']));
+        groupEl.appendChild(moreWrap);
+      }
+      groupEl.appendChild(el('div', { class: 'gg-fold-bottom' }, [
+        el('button', {
           type: 'button',
           class: 'btn btn-ghost gg-fold-btn',
           onclick: function (ev) {
@@ -665,48 +695,44 @@
             _ggOpen[gKey] = false;
             paint();
           }
-        }, ['▴ Lipat grup']));
-        groupEl.appendChild(titleRow);
+        }, ['▴ Lipat grup · ' + (gg.name || '')])
+      ]));
+      return groupEl;
+    }
 
-        const grid = el('div', { class: 'gallery-grid' }, []);
-        const nShow = _ggShown[gKey];
-        fileOrder.slice(0, nShow).forEach(function (pair) {
-          const g = fileToCard(pair.f, pair.i);
-          const card = makeGalleryCard(g);
+    const paint = function () {
+      box.innerHTML = '';
+      box.className = 'gallery-stack';
+
+      // Grid campuran: card foto + ringkasan grup (3 kolom, ukuran card)
+      const grid = el('div', { class: 'gallery-grid gg-mixed-grid' }, []);
+      const slice = tiles.slice(0, shown.gallery);
+      slice.forEach(function (tile) {
+        if (tile.kind === 'card') {
+          const card = makeGalleryCard(tile.card);
           grid.appendChild(card);
-          attachEngagement(card, 'gallery', g._edit);
-        });
-        groupEl.appendChild(grid);
-
-        const left = files.length - nShow;
-        if (left > 0) {
-          const moreWrap = el('div', { class: 'load-more-wrap gg-more-wrap' }, []);
-          moreWrap.appendChild(el('button', {
-            type: 'button',
-            class: 'btn btn-ghost load-more-btn',
-            onclick: function (ev) {
-              ev.preventDefault();
-              _ggShown[gKey] = Math.min(nShow + PAGE.galleryGroup, files.length);
-              paint();
-            }
-          }, ['Muat lebih banyak (' + left + ' tersisa)']));
-          groupEl.appendChild(moreWrap);
+          attachEngagement(card, 'gallery', tile.card._edit || ('gallery-' + Math.random()));
+        } else if (tile.kind === 'group') {
+          grid.appendChild(makeGroupSummary(tile.gg, tile.gIdx, tile.gKey));
         }
-
-        groupEl.appendChild(el('div', { class: 'gg-fold-bottom' }, [
-          el('button', {
-            type: 'button',
-            class: 'btn btn-ghost gg-fold-btn',
-            onclick: function (ev) {
-              ev.preventDefault();
-              _ggOpen[gKey] = false;
-              paint();
-            }
-          }, ['▴ Lipat grup · ' + (gg.name || '')])
-        ]));
-        box.appendChild(groupEl);
       });
-      flushCollapsedBatch();
+      if (slice.length) box.appendChild(grid);
+      updateMoreBtn('galleryMoreWrap', 'gallery');
+
+      // Grup yang sedang dibuka: full-width di bawah grid
+      activeGroups.forEach(function (gg, gIdx) {
+        const files = Array.isArray(gg.files) ? gg.files : [];
+        if (!files.length) return;
+        const gKey = String(gg.id || gg.folder || gg.name || gIdx);
+        if (!_ggOpen[gKey]) return;
+        if (q) {
+          const hay = [gg.name, gg.folder].concat(files.map(function (f) {
+            return (f.title || '') + ' ' + (f.file || '') + ' ' + (f.desc || '');
+          })).join(' ').toLowerCase();
+          if (hay.indexOf(q) === -1) return;
+        }
+        box.appendChild(makeOpenGroup(gg, gIdx, gKey));
+      });
     };
 
     bindLoadMore('galleryMore', 'galleryMoreWrap', 'gallery', paint);
