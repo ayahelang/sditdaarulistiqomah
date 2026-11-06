@@ -2291,4 +2291,100 @@
     _btnLogin.addEventListener('click', () => setTimeout(() => { if (isAuthed()) focusPpdbSectionIfNeeded(); }, 200));
   }
 
+
+
+  // ——— Multi password editor (frontend edit) ———
+  async function apiEditors(action, body) {
+    const conf = window.SDIT_CONFIG || {};
+    const token = sessionStorage.getItem('sdit_di_admin_token_v1') || localStorage.getItem('sdit_di_admin_token_v1') || '';
+    const url = (conf.sheetsApiUrl || '') + (conf.sheetsApiUrl && conf.sheetsApiUrl.indexOf('?') >= 0 ? '&' : '?') + 'action=' + encodeURIComponent(action) + (token ? '&token=' + encodeURIComponent(token) : '');
+    const r = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(Object.assign({ action: action, token: token }, body || {}))
+    });
+    return r.json();
+  }
+
+  async function refreshEditorList() {
+    const box = $('editorPassList');
+    const st = $('edStatus');
+    if (!box) return;
+    box.innerHTML = '<div class="hint">Memuat…</div>';
+    try {
+      const j = await apiEditors('listEditors', {});
+      if (!j || !j.ok) {
+        box.innerHTML = '<div class="hint" style="color:#b91c1c">' + ((j && j.error) || 'Gagal memuat. Pastikan sudah login & Code.gs terbaru di-deploy.') + '</div>';
+        return;
+      }
+      const list = j.editors || [];
+      if (!list.length) {
+        box.innerHTML = '<div class="hint">Belum ada password editor. Hanya password admin utama yang aktif.</div>';
+        return;
+      }
+      box.innerHTML = '';
+      list.forEach(function (ed) {
+        const row = document.createElement('div');
+        row.className = 'list-row';
+        row.innerHTML =
+          '<div class="list-main"><strong>' + (ed.label || ed.id) + '</strong>' +
+          '<div class="meta">' + (ed.createdAt ? ('Dibuat: ' + ed.createdAt) : ed.id) +
+          (ed.hasPassword ? ' · password aktif' : '') + '</div></div>';
+        const actions = document.createElement('div');
+        actions.className = 'actions-row';
+        const del = document.createElement('button');
+        del.type = 'button';
+        del.className = 'btn btn-ghost';
+        del.style.color = '#b91c1c';
+        del.textContent = 'Hapus';
+        del.onclick = async function () {
+          if (!confirm('Hapus password editor "' + (ed.label || ed.id) + '"?')) return;
+          const res = await apiEditors('removeEditor', { id: ed.id });
+          if (st) st.textContent = res.ok ? '✓ Dihapus' : ('✗ ' + (res.error || 'gagal'));
+          refreshEditorList();
+        };
+        actions.appendChild(del);
+        row.appendChild(actions);
+        box.appendChild(row);
+      });
+    } catch (err) {
+      box.innerHTML = '<div class="hint" style="color:#b91c1c">' + (err.message || err) + '</div>';
+    }
+  }
+
+  const btnAddEditor = $('btnAddEditor');
+  if (btnAddEditor) {
+    btnAddEditor.onclick = async function () {
+      const label = (($('edLabel') && $('edLabel').value) || '').trim();
+      const p1 = (($('edPass') && $('edPass').value) || '');
+      const p2 = (($('edPass2') && $('edPass2').value) || '');
+      const st = $('edStatus');
+      if (p1.length < 4) { if (st) st.textContent = 'Password minimal 4 karakter.'; return; }
+      if (p1 !== p2) { if (st) st.textContent = 'Password tidak sama.'; return; }
+      if (st) st.textContent = 'Menyimpan…';
+      try {
+        const res = await apiEditors('addEditor', { label: label || 'Editor', password: p1 });
+        if (!res.ok) { if (st) st.textContent = '✗ ' + (res.error || 'gagal'); return; }
+        if ($('edLabel')) $('edLabel').value = '';
+        if ($('edPass')) $('edPass').value = '';
+        if ($('edPass2')) $('edPass2').value = '';
+        if (st) st.textContent = '✓ Editor ditambahkan. Bisa langsung dipakai di frontend.';
+        refreshEditorList();
+      } catch (err) {
+        if (st) st.textContent = '✗ ' + (err.message || err);
+      }
+    };
+  }
+  const btnRefEd = $('btnRefreshEditors');
+  if (btnRefEd) btnRefEd.onclick = refreshEditorList;
+
+  // auto-load when setup tab opened
+  document.querySelectorAll('.admin-tab').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      if (btn.getAttribute('data-tab') === 'setup') {
+        setTimeout(refreshEditorList, 50);
+      }
+    });
+  });
+
 })();

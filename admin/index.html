@@ -758,8 +758,31 @@
       <h2>Setup database</h2>
       <p class="hint">
         <strong>Google Sheets + Apps Script</strong> — ikuti <code>apps-script/SETUP.md</code>.
-        Multi-guru: share Spreadsheet (Editor). Token di <code>js/config.js</code>.
+        Multi-guru: share Spreadsheet (Editor). Rahasia (token &amp; password) di Script Properties.
       </p>
+    </div>
+<div class="admin-card">
+      <h2>Password Editor (edit cepat di frontend)</h2>
+      <p class="hint">
+        Selain <strong>password admin utama</strong> (Script Properties → <code>ADMIN_PASSWORD</code>),
+        Anda bisa menambah beberapa password editor. Siapa pun yang tahu salah satu password
+        ini bisa memakai <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>Shift</kbd> + double-click untuk
+        mengedit card di frontend. Password disimpan aman di Apps Script (bukan di GitHub).
+      </p>
+      <div class="list" id="editorPassList"></div>
+      <div style="margin-top:1rem;padding:1rem;border:1px solid rgba(11,110,79,.15);border-radius:12px;background:#f8fbf9">
+        <label>Label (nama guru / peran)</label>
+        <input type="text" id="edLabel" placeholder="Contoh: Bu Siti / Wali Kelas 3">
+        <label>Password baru</label>
+        <input type="password" id="edPass" placeholder="Minimal 4 karakter" autocomplete="new-password">
+        <label>Ulangi password</label>
+        <input type="password" id="edPass2" placeholder="Ketik ulang" autocomplete="new-password">
+        <div class="actions" style="margin-top:.75rem;display:flex;flex-wrap:wrap;gap:.5rem">
+          <button class="btn btn-primary" type="button" id="btnAddEditor">+ Tambah password editor</button>
+          <button class="btn btn-ghost" type="button" id="btnRefreshEditors">Refresh daftar</button>
+        </div>
+        <p id="edStatus" class="hint" style="margin-top:.5rem"></p>
+      </div>
     </div>
 </div><!-- /tab-setup -->
 </div>

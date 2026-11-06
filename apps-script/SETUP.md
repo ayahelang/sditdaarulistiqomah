@@ -263,3 +263,13 @@ Siapa pun dengan link *Editor* bisa mengubah/menghapus semua data CMS & PPDB.
 
 ### config.js yang boleh di GitHub
 Hanya: `sheetsApiUrl`, `useSheets`, `siteCacheTtl`.
+
+## Password editor tambahan (multi-password)
+
+Selain `ADMIN_PASSWORD`, panel admin (tab **Setup**) bisa menambah password editor.
+
+- Disimpan di Script property `EDITOR_PASSWORDS` (JSON, dikelola lewat API).
+- Password editor **boleh** dipakai untuk login panel admin **dan** edit cepat di frontend
+  (`Ctrl+Alt+Shift` + double-click).
+- Setelah update `Code.gs`, **Deploy → Manage deployments → Edit → New version → Deploy**.
+- Jangan taruh password di GitHub / `config.js`.

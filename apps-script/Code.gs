@@ -54,6 +54,18 @@ function handleRequest(e, method) {
     if (action === 'adminLogin') {
       return json_(adminLogin_(body.password || (e.parameter && e.parameter.password) || ''));
     }
+    if (action === 'listEditors') {
+      return json_(listEditors_());
+    }
+    if (action === 'addEditor') {
+      return json_(addEditorPassword_(body));
+    }
+    if (action === 'removeEditor') {
+      return json_(removeEditorPassword_(body));
+    }
+    if (action === 'updateEditor') {
+      return json_(updateEditorPassword_(body));
+    }
     if (action === 'getSite') {
       return json_({ ok: true, data: getSite_(), source: 'google-sheets', ts: new Date().toISOString() });
     }
@@ -618,20 +630,133 @@ function adminLogin_(password) {
   var props = PropertiesService.getScriptProperties();
   var expected = props.getProperty('ADMIN_PASSWORD') || '';
   var apiToken = props.getProperty('API_TOKEN') || '';
-  if (!expected) {
-    return { ok: false, error: 'ADMIN_PASSWORD belum di-set di Script properties' };
-  }
-  if (!password || String(password) !== String(expected)) {
-    return { ok: false, error: 'Password salah' };
-  }
   if (!apiToken) {
     return { ok: false, error: 'API_TOKEN belum di-set di Script properties' };
   }
-  // Token hanya diberikan setelah password benar — tidak ada di GitHub / config.js
+  if (!password) {
+    return { ok: false, error: 'Password wajib diisi' };
+  }
+  // 1) Password admin utama
+  if (expected && String(password) === String(expected)) {
+    return {
+      ok: true,
+      token: apiToken,
+      role: 'admin',
+      label: 'Admin',
+      message: 'Login berhasil (admin)',
+      ts: new Date().toISOString()
+    };
+  }
+  // 2) Password editor tambahan (kelola dari panel admin)
+  var editors = getEditorPasswords_();
+  for (var i = 0; i < editors.length; i++) {
+    if (editors[i] && String(password) === String(editors[i].password || '')) {
+      return {
+        ok: true,
+        token: apiToken,
+        role: 'editor',
+        label: editors[i].label || editors[i].id || 'Editor',
+        message: 'Login berhasil (editor)',
+        ts: new Date().toISOString()
+      };
+    }
+  }
+  if (!expected) {
+    return { ok: false, error: 'ADMIN_PASSWORD belum di-set di Script properties' };
+  }
+  return { ok: false, error: 'Password salah' };
+}
+
+/** Editor passwords disimpan di Script Properties sebagai JSON array
+ *  [{ id, label, password, createdAt }]
+ *  Hanya password yang dicek — label untuk UI admin.
+ */
+function getEditorPasswords_() {
+  var props = PropertiesService.getScriptProperties();
+  var raw = props.getProperty('EDITOR_PASSWORDS') || '[]';
+  try {
+    var arr = JSON.parse(raw);
+    return Array.isArray(arr) ? arr : [];
+  } catch (e) {
+    return [];
+  }
+}
+
+function setEditorPasswords_(list) {
+  var props = PropertiesService.getScriptProperties();
+  props.setProperty('EDITOR_PASSWORDS', JSON.stringify(list || []));
+}
+
+/** List editors (password disensor) — butuh token admin */
+function listEditors_() {
+  var list = getEditorPasswords_();
   return {
     ok: true,
-    token: apiToken,
-    message: 'Login berhasil',
-    ts: new Date().toISOString()
+    editors: list.map(function (e) {
+      return {
+        id: e.id,
+        label: e.label || '',
+        createdAt: e.createdAt || '',
+        // jangan kirim password ke klien
+        hasPassword: !!(e.password && String(e.password).length)
+      };
+    })
   };
+}
+
+function addEditorPassword_(body) {
+  var label = String((body && body.label) || '').trim() || 'Editor';
+  var password = String((body && body.password) || '');
+  if (password.length < 4) {
+    return { ok: false, error: 'Password editor minimal 4 karakter' };
+  }
+  var list = getEditorPasswords_();
+  // cegah duplikat password dengan admin / editor lain
+  var props = PropertiesService.getScriptProperties();
+  var adminPass = props.getProperty('ADMIN_PASSWORD') || '';
+  if (adminPass && password === adminPass) {
+    return { ok: false, error: 'Password editor tidak boleh sama dengan password admin utama' };
+  }
+  for (var i = 0; i < list.length; i++) {
+    if (String(list[i].password) === password) {
+      return { ok: false, error: 'Password ini sudah dipakai editor lain' };
+    }
+  }
+  var id = 'ed' + new Date().getTime();
+  list.push({
+    id: id,
+    label: label,
+    password: password,
+    createdAt: new Date().toISOString()
+  });
+  setEditorPasswords_(list);
+  return { ok: true, message: 'Editor ditambahkan', id: id, label: label };
+}
+
+function removeEditorPassword_(body) {
+  var id = String((body && body.id) || '');
+  if (!id) return { ok: false, error: 'id wajib' };
+  var list = getEditorPasswords_().filter(function (e) { return e.id !== id; });
+  setEditorPasswords_(list);
+  return { ok: true, message: 'Editor dihapus' };
+}
+
+function updateEditorPassword_(body) {
+  var id = String((body && body.id) || '');
+  var list = getEditorPasswords_();
+  var found = null;
+  for (var i = 0; i < list.length; i++) {
+    if (list[i].id === id) { found = list[i]; break; }
+  }
+  if (!found) return { ok: false, error: 'Editor tidak ditemukan' };
+  if (body.label != null && String(body.label).trim()) {
+    found.label = String(body.label).trim();
+  }
+  if (body.password != null && String(body.password).length) {
+    var password = String(body.password);
+    if (password.length < 4) return { ok: false, error: 'Password minimal 4 karakter' };
+    found.password = password;
+  }
+  setEditorPasswords_(list);
+  return { ok: true, message: 'Editor diperbarui' };
 }

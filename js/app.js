@@ -86,7 +86,22 @@
   }
 
 
-  const PAGE = { articles: 6, gallery: 6, videos: 4, galleryGroup: 6 };
+  function adaptiveGalleryGroupPage() {
+    try {
+      const w = window.innerWidth || 800;
+      const mem = navigator.deviceMemory || 4;
+      const cores = navigator.hardwareConcurrency || 4;
+      const conn = (navigator.connection && navigator.connection.effectiveType) || '';
+      // gadget lemah / layar sempit → lebih sedikit card
+      if (w < 480 || mem <= 2 || cores <= 2 || conn === '2g' || conn === 'slow-2g') return 3;
+      if (w < 768 || mem <= 3 || conn === '3g') return 4;
+      if (w < 1100) return 6;
+      return 8;
+    } catch (_) {
+      return 6;
+    }
+  }
+  const PAGE = { articles: 6, gallery: 6, videos: 4, galleryGroup: adaptiveGalleryGroupPage() };
   const shown = { articles: 0, gallery: 0, videos: 0 };
   let _lists = { articles: [], gallery: [], videos: [] };
   /** State buka/tutup + pagination per grup galeri folder */
@@ -549,8 +564,7 @@
         })).join(' ').toLowerCase();
         if (hay.indexOf(q) === -1) return;
       }
-      // Grup terbuka tidak masuk grid campuran (ditampilkan full-width terpisah)
-      if (_ggOpen[gKey]) return;
+      // Tetap masuk daftar (posisi dipertahankan saat dibuka)
       tiles.push({
         kind: 'group',
         date: gg.date || '',
@@ -602,11 +616,17 @@
         title: 'Buka grup ' + (gg.name || ''),
         onclick: function (ev) {
           ev.preventDefault();
+          PAGE.galleryGroup = adaptiveGalleryGroupPage();
           _ggOpen[gKey] = true;
           if (!_ggShown[gKey] || _ggShown[gKey] < PAGE.galleryGroup) {
             _ggShown[gKey] = Math.min(PAGE.galleryGroup, files.length);
           }
           paint();
+          // jaga posisi visual dekat card pembuka
+          try {
+            const node = box.querySelector('[data-gg-key="' + CSS.escape(gKey) + '"]');
+            if (node) node.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+          } catch (_) {}
         }
       }, []);
       const thumbWrap = el('div', { class: 'gg-summary-thumb' }, []);
@@ -701,38 +721,84 @@
     }
 
     const paint = function () {
+      // refresh adaptive page size tiap render (orientasi / resize)
+      PAGE.galleryGroup = adaptiveGalleryGroupPage();
       box.innerHTML = '';
       box.className = 'gallery-stack';
 
-      // Grid campuran: card foto + ringkasan grup (3 kolom, ukuran card)
-      const grid = el('div', { class: 'gallery-grid gg-mixed-grid' }, []);
-      const slice = tiles.slice(0, shown.gallery);
-      slice.forEach(function (tile) {
-        if (tile.kind === 'card') {
-          const card = makeGalleryCard(tile.card);
-          grid.appendChild(card);
-          attachEngagement(card, 'gallery', tile.card._edit || ('gallery-' + Math.random()));
-        } else if (tile.kind === 'group') {
-          grid.appendChild(makeGroupSummary(tile.gg, tile.gIdx, tile.gKey));
+      // Render sekuensial: card & grup tertutup di grid;
+      // grup TERBUKA disisipkan full-width tepat di posisi card pembukanya.
+      let grid = el('div', { class: 'gallery-grid gg-mixed-grid' }, []);
+      const flushGrid = function () {
+        if (grid.childNodes.length) {
+          box.appendChild(grid);
+          grid = el('div', { class: 'gallery-grid gg-mixed-grid' }, []);
         }
-      });
-      if (slice.length) box.appendChild(grid);
-      updateMoreBtn('galleryMoreWrap', 'gallery');
+      };
 
-      // Grup yang sedang dibuka: full-width di bawah grid
+      // tiles hanya berisi card + grup tertutup.
+      // Open groups disisipkan berdasarkan urutan activeGroups di posisi
+      // yang sama seolah summary-nya masih ada di daftar penuh.
+      // Strategi: bangun daftar "slot" dari semua tiles (termasuk grup terbuka).
+      const allSlots = [];
+      list.forEach(function (card) {
+        if (q) {
+          const hay = [card.title, card.desc, card.source, card.url].join(' ').toLowerCase();
+          if (hay.indexOf(q) === -1) return;
+        }
+        allSlots.push({ kind: 'card', date: card.date || '', _idx: card._idx, card: card });
+      });
       activeGroups.forEach(function (gg, gIdx) {
         const files = Array.isArray(gg.files) ? gg.files : [];
         if (!files.length) return;
         const gKey = String(gg.id || gg.folder || gg.name || gIdx);
-        if (!_ggOpen[gKey]) return;
         if (q) {
           const hay = [gg.name, gg.folder].concat(files.map(function (f) {
             return (f.title || '') + ' ' + (f.file || '') + ' ' + (f.desc || '');
           })).join(' ').toLowerCase();
           if (hay.indexOf(q) === -1) return;
         }
-        box.appendChild(makeOpenGroup(gg, gIdx, gKey));
+        allSlots.push({
+          kind: 'group',
+          date: gg.date || '',
+          _idx: 200000 + (typeof gg.order === 'number' ? gg.order : gIdx),
+          gg: gg,
+          gIdx: gIdx,
+          gKey: gKey
+        });
       });
+      const sortDir = ((_mediaFilter.gallery && _mediaFilter.gallery.sort) === 'oldest') ? 1 : -1;
+      allSlots.sort(function (a, b) {
+        const da = parseItemDate(a);
+        const db = parseItemDate(b);
+        if (da !== db) return (da - db) * sortDir;
+        return ((a._idx || 0) - (b._idx || 0)) * sortDir;
+      });
+
+      // Pagination hanya menghitung "unit" (card + summary grup).
+      // Grup terbuka tetap dihitung 1 unit di posisi summary-nya.
+      const unitSlots = allSlots;
+      _lists.gallery = unitSlots;
+      if (shown.gallery > unitSlots.length) shown.gallery = unitSlots.length;
+      const slice = unitSlots.slice(0, shown.gallery);
+
+      slice.forEach(function (tile) {
+        if (tile.kind === 'card') {
+          const card = makeGalleryCard(tile.card);
+          grid.appendChild(card);
+          attachEngagement(card, 'gallery', tile.card._edit || ('gallery-' + Math.random()));
+        } else if (tile.kind === 'group') {
+          if (_ggOpen[tile.gKey]) {
+            // tutup grid saat ini, sisipkan grup full-width di sini
+            flushGrid();
+            box.appendChild(makeOpenGroup(tile.gg, tile.gIdx, tile.gKey));
+          } else {
+            grid.appendChild(makeGroupSummary(tile.gg, tile.gIdx, tile.gKey));
+          }
+        }
+      });
+      flushGrid();
+      updateMoreBtn('galleryMoreWrap', 'gallery');
     };
 
     bindLoadMore('galleryMore', 'galleryMoreWrap', 'gallery', paint);
