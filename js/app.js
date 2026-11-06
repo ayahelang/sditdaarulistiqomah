@@ -95,7 +95,12 @@
     const wrap = document.getElementById(wrapId);
     if (!btn || !wrap) return;
     btn.onclick = () => {
-      shown[key] = Math.min(shown[key] + PAGE[key], _lists[key].length);
+      const total = (_lists[key] && _lists[key].length) || 0;
+      if (shown[key] >= total) {
+        updateMoreBtn(wrapId, key);
+        return;
+      }
+      shown[key] = Math.min(shown[key] + PAGE[key], total);
       renderPage();
     };
   }
@@ -103,13 +108,33 @@
   function updateMoreBtn(wrapId, key) {
     const wrap = document.getElementById(wrapId);
     if (!wrap) return;
-    const left = _lists[key].length - shown[key];
-    if (left <= 0) {
+    const total = (_lists[key] && _lists[key].length) || 0;
+    // jaga shown tidak melebihi total / tidak negatif
+    if (shown[key] > total) shown[key] = total;
+    if (shown[key] < 0) shown[key] = 0;
+    const left = Math.max(0, total - shown[key]);
+    const btn = wrap.querySelector('button') || document.getElementById(wrapId.replace('Wrap', ''));
+    if (left <= 0 || total === 0) {
       wrap.hidden = true;
+      wrap.setAttribute('hidden', '');
+      wrap.style.display = 'none';
+      if (btn) btn.textContent = 'Muat lebih banyak';
     } else {
       wrap.hidden = false;
-      const btn = wrap.querySelector('button');
+      wrap.removeAttribute('hidden');
+      wrap.style.display = '';
       if (btn) btn.textContent = 'Muat lebih banyak (' + left + ' tersisa)';
+    }
+  }
+
+  /** Inisialisasi / pertahankan jumlah item yang sudah ditampilkan */
+  function initShown(key, total) {
+    total = total || 0;
+    const page = PAGE[key] || 6;
+    if (!shown[key] || shown[key] < page) {
+      shown[key] = Math.min(page, total);
+    } else {
+      shown[key] = Math.min(shown[key], total);
     }
   }
 
@@ -273,7 +298,7 @@
     const box = document.getElementById('articles');
     if (!box) return;
     _lists.articles = articles || [];
-    shown.articles = Math.min(PAGE.articles, _lists.articles.length);
+    initShown('articles', _lists.articles.length);
     const paint = () => {
       box.innerHTML = '';
       _lists.articles.slice(0, shown.articles).forEach((a, idx) => {
@@ -378,7 +403,7 @@
       }
     });
     _lists.gallery = list;
-    shown.gallery = Math.min(PAGE.gallery, list.length);
+    initShown('gallery', list.length);
 
     const activeGroups = (groups || [])
       .filter(function (gg) { return gg && gg.active !== false; })
@@ -468,7 +493,7 @@
       }
     });
     _lists.videos = list;
-    shown.videos = Math.min(PAGE.videos, list.length);
+    initShown('videos', list.length);
     const paint = () => {
       box.innerHTML = '';
       _lists.videos.slice(0, shown.videos).forEach((v) => {
