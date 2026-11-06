@@ -560,6 +560,7 @@ body.admin-edit-armed [data-admin-edit]:hover {
 
 
 /* ---------- Load more ---------- */
+.load-more-wrap[hidden] { display: none !important; }
 .load-more-wrap {
   display: flex;
   justify-content: center;
