@@ -86,9 +86,12 @@
   }
 
 
-  const PAGE = { articles: 6, gallery: 6, videos: 4 };
+  const PAGE = { articles: 6, gallery: 6, videos: 4, galleryGroup: 6 };
   const shown = { articles: 0, gallery: 0, videos: 0 };
   let _lists = { articles: [], gallery: [], videos: [] };
+  /** State buka/tutup + pagination per grup galeri folder */
+  const _ggOpen = Object.create(null);
+  const _ggShown = Object.create(null);
 
   function bindLoadMore(btnId, wrapId, key, renderPage) {
     const btn = document.getElementById(btnId);
@@ -436,36 +439,142 @@
       }
       updateMoreBtn('galleryMoreWrap', 'gallery');
 
-      // 2) Gallery groups (folder-based)
+      // 2) Gallery groups (folder-based) — default tertutup
       activeGroups.forEach(function (gg, gIdx) {
         const files = Array.isArray(gg.files) ? gg.files : [];
         if (!files.length) return;
         const folder = (gg.folder || '').replace(/\/+$/, '');
-        const groupEl = el('div', { class: 'gallery-group' }, []);
-        const titleRow = el('h3', { class: 'gallery-group-title' }, [
-          gg.name || 'Galeri',
-          el('span', { class: 'gg-count' }, [String(files.length) + ' foto'])
-        ]);
-        groupEl.appendChild(titleRow);
+        const gKey = String(gg.id || gg.folder || gg.name || gIdx);
+        const isOpen = !!_ggOpen[gKey];
 
-        const grid = el('div', { class: 'gallery-grid' }, []);
-        files.forEach(function (f, fIdx) {
+        function fileToCard(f, fIdx) {
           const fname = f.file || f.name || '';
           const imgPath = folder ? (folder + '/' + fname) : fname;
           const title = (f.title && String(f.title).trim()) || titleFromFilename(fname);
           const desc = (f.desc && String(f.desc).trim()) || '';
-          const g = {
+          return {
             title: title,
             image: imgPath,
             desc: desc,
             type: 'foto',
             _edit: 'galleryGroupFile:' + gIdx + ':' + fIdx
           };
+        }
+
+        const groupEl = el('div', {
+          class: 'gallery-group' + (isOpen ? ' is-open' : ' is-collapsed'),
+          'data-gg-key': gKey
+        }, []);
+
+        if (!isOpen) {
+          // ---- Ringkas: judul + jumlah + thumbnail pertama ----
+          const first = fileToCard(files[0], 0);
+          const summary = el('button', {
+            type: 'button',
+            class: 'gg-summary',
+            title: 'Buka grup ' + (gg.name || ''),
+            onclick: function (ev) {
+              ev.preventDefault();
+              _ggOpen[gKey] = true;
+              if (!_ggShown[gKey] || _ggShown[gKey] < PAGE.galleryGroup) {
+                _ggShown[gKey] = Math.min(PAGE.galleryGroup, files.length);
+              }
+              paint();
+              try {
+                groupEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+              } catch (_) {}
+            }
+          }, []);
+
+          const thumbWrap = el('div', { class: 'gg-summary-thumb' }, []);
+          if (first.image) {
+            thumbWrap.appendChild(el('img', { src: first.image, alt: first.title || '', loading: 'lazy' }));
+          } else {
+            thumbWrap.appendChild(el('div', { class: 'gallery-placeholder' }, ['Foto']));
+          }
+          summary.appendChild(thumbWrap);
+
+          const meta = el('div', { class: 'gg-summary-meta' }, [
+            el('div', { class: 'gg-summary-name' }, [gg.name || 'Galeri']),
+            el('div', { class: 'gg-summary-count' }, [String(files.length) + ' foto']),
+            el('div', { class: 'gg-summary-hint' }, ['Klik untuk membuka'])
+          ]);
+          summary.appendChild(meta);
+          summary.appendChild(el('span', { class: 'gg-summary-chevron', 'aria-hidden': 'true' }, ['▸']));
+          groupEl.appendChild(summary);
+          box.appendChild(groupEl);
+          return;
+        }
+
+        // ---- Terbuka: judul + lipat + grid + muat lebih banyak ----
+        if (!_ggShown[gKey] || _ggShown[gKey] < 1) {
+          _ggShown[gKey] = Math.min(PAGE.galleryGroup, files.length);
+        }
+        if (_ggShown[gKey] > files.length) _ggShown[gKey] = files.length;
+
+        const titleRow = el('div', { class: 'gallery-group-head' }, []);
+        titleRow.appendChild(el('h3', { class: 'gallery-group-title' }, [
+          gg.name || 'Galeri',
+          el('span', { class: 'gg-count' }, [String(files.length) + ' foto'])
+        ]));
+
+        const btnFold = el('button', {
+          type: 'button',
+          class: 'btn btn-ghost gg-fold-btn',
+          title: 'Tutup grup ini',
+          onclick: function (ev) {
+            ev.preventDefault();
+            _ggOpen[gKey] = false;
+            paint();
+          }
+        }, ['▴ Lipat grup']);
+        titleRow.appendChild(btnFold);
+        groupEl.appendChild(titleRow);
+
+        const grid = el('div', { class: 'gallery-grid' }, []);
+        const nShow = _ggShown[gKey];
+        files.slice(0, nShow).forEach(function (f, fIdx) {
+          const g = fileToCard(f, fIdx);
           const card = makeGalleryCard(g);
           grid.appendChild(card);
           attachEngagement(card, 'gallery', g._edit);
         });
         groupEl.appendChild(grid);
+
+        const left = files.length - nShow;
+        if (left > 0) {
+          const moreWrap = el('div', { class: 'load-more-wrap gg-more-wrap' }, []);
+          const moreBtn = el('button', {
+            type: 'button',
+            class: 'btn btn-ghost load-more-btn',
+            onclick: function (ev) {
+              ev.preventDefault();
+              _ggShown[gKey] = Math.min(nShow + PAGE.galleryGroup, files.length);
+              paint();
+            }
+          }, ['Muat lebih banyak (' + left + ' tersisa)']);
+          moreWrap.appendChild(moreBtn);
+          groupEl.appendChild(moreWrap);
+        }
+
+        // Tombol lipat juga di bawah grid (mudah dijangkau setelah scroll)
+        const foldBottom = el('div', { class: 'gg-fold-bottom' }, [
+          el('button', {
+            type: 'button',
+            class: 'btn btn-ghost gg-fold-btn',
+            onclick: function (ev) {
+              ev.preventDefault();
+              _ggOpen[gKey] = false;
+              paint();
+              try {
+                const el2 = box.querySelector('[data-gg-key="' + gKey.replace(/"/g, '') + '"]');
+                if (el2) el2.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+              } catch (_) {}
+            }
+          }, ['▴ Lipat grup · ' + (gg.name || '')])
+        ]);
+        groupEl.appendChild(foldBottom);
+
         box.appendChild(groupEl);
       });
     };

@@ -1,12 +1,9 @@
-Revisi PRODUKSI (sditdaarulistiqomah.sch.id)
-Repo: ayahelang/sditdaarulistiqomah
+Produksi — sditdaarulistiqomah.sch.id
 
-File:
-  js/admin.js  — modal edit foto grup + preview admin
-  js/app.js    — layout grup full-width + fix tombol "Muat lebih banyak"
-  css/style.css — gallery-stack + load-more-wrap[hidden]
+Fitur baru grup galeri frontend:
+- Default: tertutup (judul + jumlah foto + thumbnail pertama)
+- Klik ringkasan → buka grup, kartu dimuat bertahap (6 per klik)
+- Tombol "Muat lebih banyak" per grup
+- Tombol "Lipat grup" (atas & bawah) untuk menutup lagi
 
-Pasang:
-  cp js/admin.js js/app.js css/style.css ke path yang sama di repo
-  git add + commit + push
-  hard refresh Ctrl+Shift+R
+File: js/admin.js, js/app.js, css/style.css
