@@ -47,6 +47,7 @@
     if (!res.ok) throw new Error('Gagal memuat data');
     const data = await res.json();
     if (!data.media) data.media = [];
+    if (!Array.isArray(data.galleryGroups)) data.galleryGroups = [];
     console.info('[SDIT] Data dari data/site.json (fallback)');
     return data;
   }
@@ -310,18 +311,65 @@
     paint();
   }
 
-  function renderGallery(items, media) {
+  function titleFromFilename(name) {
+    if (!name) return 'Foto';
+    return String(name)
+      .replace(/\.[^.]+$/, '')
+      .replace(/[-_]+/g, ' ')
+      .replace(/\s+/g, ' ')
+      .replace(/\b\w/g, function (c) { return c.toUpperCase(); })
+      .trim() || 'Foto';
+  }
+
+  function makeGalleryCard(g) {
+    const isIg = g.source === 'instagram' || (g.url && g.url.indexOf('instagram.com') !== -1);
+    const children = [];
+    if (g.image) children.push(el('img', { src: g.image, alt: g.title || '', loading: 'lazy' }));
+    else children.push(el('div', { class: 'gallery-placeholder' }, [isIg ? 'Instagram' : 'Foto']));
+
+    const capKids = [g.title || 'Foto'];
+    if (g.desc && String(g.desc).trim()) {
+      capKids.push(el('span', { class: 'g-desc' }, [String(g.desc).trim()]));
+    }
+    children.push(el('figcaption', {}, capKids));
+
+    const fig = el('figure', {
+      class: 'gallery-item',
+      onclick: function (ev) {
+        if (ev.ctrlKey && ev.altKey && ev.shiftKey) return;
+        if (isIg && g.url) window.open(g.url, '_blank', 'noopener');
+        else if (g.image) openLightbox(g.image, g.title);
+        else if (g.url) window.open(g.url, '_blank', 'noopener');
+      }
+    }, children);
+
+    const card = el('div', {
+      class: 'gallery-card',
+      'data-admin-edit': g._edit || '',
+      title: 'Ctrl+Alt+Shift + double-click untuk edit'
+    }, [fig]);
+    return card;
+  }
+
+  function renderGallery(items, media, groups) {
     const box = document.getElementById('gallery');
     if (!box) return;
     const list = [];
     (items || []).forEach((g, idx) => {
-      list.push({ title: g.title, image: g.image, type: 'foto', _edit: 'gallery:' + idx });
+      list.push({
+        title: g.title,
+        image: g.image,
+        desc: g.desc || '',
+        type: 'foto',
+        _edit: 'gallery:' + idx
+      });
     });
     (media || []).forEach((m, idx) => {
       if (m.type === 'foto' || m.type === 'image') {
         list.push({
           title: m.title || 'Foto',
           image: m.thumb || '',
+          desc: m.description || m.desc || '',
           url: m.url,
           source: m.source,
           type: 'foto',
@@ -331,32 +379,70 @@
     });
     _lists.gallery = list;
     shown.gallery = Math.min(PAGE.gallery, list.length);
+
+    const activeGroups = (groups || [])
+      .filter(function (gg) { return gg && gg.active !== false; })
+      .slice()
+      .sort(function (a, b) { return (a.order || 0) - (b.order || 0); });
+
     const paint = () => {
       box.innerHTML = '';
-      _lists.gallery.slice(0, shown.gallery).forEach((g) => {
-        const isIg = g.source === 'instagram' || (g.url && g.url.indexOf('instagram.com') !== -1);
-        const children = [];
-        if (g.image) children.push(el('img', { src: g.image, alt: g.title || '', loading: 'lazy' }));
-        else children.push(el('div', { class: 'gallery-placeholder' }, [isIg ? 'Instagram' : 'Foto']));
-        children.push(el('figcaption', {}, [g.title || 'Foto']));
-        const fig = el('figure', {
-          class: 'gallery-item',
-          onclick: function (ev) {
-            if (ev.ctrlKey && ev.altKey && ev.shiftKey) return;
-            if (isIg && g.url) window.open(g.url, '_blank', 'noopener');
-            else if (g.image) openLightbox(g.image, g.title);
-            else if (g.url) window.open(g.url, '_blank', 'noopener');
-          }
-        }, children);
-        const card = el('div', {
-          class: 'gallery-card',
-          'data-admin-edit': g._edit || '',
-          title: 'Ctrl+Alt+Shift + double-click untuk edit'
-        }, [fig]);
-        box.appendChild(card);
-        attachEngagement(card, 'gallery', g._edit || ('gallery-' + Math.random()));
-      });
+      // #gallery di HTML punya class gallery-grid; untuk grup bersarang
+      // class itu membuat tiap grup jadi "sel" kecil. Ganti jadi stack penuh.
+      box.className = 'gallery-stack';
+
+      // 1) Flat gallery items (existing)
+      if (_lists.gallery.length) {
+        const flatWrap = el('div', { class: 'gallery-group' }, []);
+        if (activeGroups.length) {
+          flatWrap.appendChild(el('h3', { class: 'gallery-group-title' }, [
+            'Galeri',
+            el('span', { class: 'gg-count' }, [String(_lists.gallery.length) + ' foto'])
+          ]));
+        }
+        const flatGrid = el('div', { class: 'gallery-grid' }, []);
+        _lists.gallery.slice(0, shown.gallery).forEach((g) => {
+          const card = makeGalleryCard(g);
+          flatGrid.appendChild(card);
+          attachEngagement(card, 'gallery', g._edit || ('gallery-' + Math.random()));
+        });
+        flatWrap.appendChild(flatGrid);
+        box.appendChild(flatWrap);
+      }
       updateMoreBtn('galleryMoreWrap', 'gallery');
+
+      // 2) Gallery groups (folder-based)
+      activeGroups.forEach(function (gg, gIdx) {
+        const files = Array.isArray(gg.files) ? gg.files : [];
+        if (!files.length) return;
+        const folder = (gg.folder || '').replace(/\/+$/, '');
+        const groupEl = el('div', { class: 'gallery-group' }, []);
+        const titleRow = el('h3', { class: 'gallery-group-title' }, [
+          gg.name || 'Galeri',
+          el('span', { class: 'gg-count' }, [String(files.length) + ' foto'])
+        ]);
+        groupEl.appendChild(titleRow);
+
+        const grid = el('div', { class: 'gallery-grid' }, []);
+        files.forEach(function (f, fIdx) {
+          const fname = f.file || f.name || '';
+          const imgPath = folder ? (folder + '/' + fname) : fname;
+          const title = (f.title && String(f.title).trim()) || titleFromFilename(fname);
+          const desc = (f.desc && String(f.desc).trim()) || '';
+          const g = {
+            title: title,
+            image: imgPath,
+            desc: desc,
+            type: 'foto',
+            _edit: 'galleryGroupFile:' + gIdx + ':' + fIdx
+          };
+          const card = makeGalleryCard(g);
+          grid.appendChild(card);
+          attachEngagement(card, 'gallery', g._edit);
+        });
+        groupEl.appendChild(grid);
+        box.appendChild(groupEl);
+      });
     };
     bindLoadMore('galleryMore', 'galleryMoreWrap', 'gallery', paint);
     paint();
@@ -1625,7 +1711,12 @@
     gallery: [
       { key: 'title', label: 'Judul', type: 'text' },
       { key: 'image', label: 'URL / path gambar', type: 'text' },
+      { key: 'desc', label: 'Deskripsi (opsional)', type: 'textarea' },
       { key: 'type', label: 'Tipe', type: 'text' }
+    ],
+    galleryGroupFile: [
+      { key: 'title', label: 'Judul foto', type: 'text' },
+      { key: 'desc', label: 'Deskripsi (opsional, kosong = tidak ditampilkan)', type: 'textarea' }
     ],
     videos: [
       { key: 'title', label: 'Judul', type: 'text' },
@@ -1666,7 +1757,8 @@
       else if (type === 'activities') renderActivities(site.activities);
       else if (type === 'stats') renderStats(site.stats);
       else if (type === 'articles') renderArticles(site.articles);
-      else if (type === 'gallery') renderGallery(site.gallery, site.media);
+      else if (type === 'gallery' || type === 'galleryGroups' || type === 'galleryGroupFile')
+        renderGallery(site.gallery, site.media, site.galleryGroups);
       else if (type === 'videos') renderVideos(site.videos, site.media);
       else if (type === 'facilities' || type === 'teachers' || type === 'leadership' ||
                type === 'achievements' || type === 'calendar') {
@@ -1753,7 +1845,7 @@
     if (box) box.hidden = true;
   }
 
-  function openFeEditFloat(type, index, token) {
+  function openFeEditFloat(type, index, token, extra) {
     ensureFeEditStyles();
     const site = window.__sditLiveSite;
     if (!site) {
@@ -1765,12 +1857,32 @@
       window.alert('Tipe "' + type + '" belum mendukung edit cepat di popup. Buka panel admin.');
       return;
     }
-    const list = feGetList(site, type);
-    if (!list || index < 0 || index >= list.length) {
-      window.alert('Item tidak ditemukan (index ' + index + ').');
-      return;
+
+    let list, item, groupIdx, fileIdx;
+    if (type === 'galleryGroupFile') {
+      groupIdx = index;
+      fileIdx = extra;
+      if (!Array.isArray(site.galleryGroups) || groupIdx < 0 || groupIdx >= site.galleryGroups.length) {
+        window.alert('Grup galeri tidak ditemukan.');
+        return;
+      }
+      const gg = site.galleryGroups[groupIdx];
+      if (!Array.isArray(gg.files) || fileIdx < 0 || fileIdx >= gg.files.length) {
+        window.alert('File dalam grup tidak ditemukan.');
+        return;
+      }
+      list = gg.files;
+      item = Object.assign({}, list[fileIdx]);
+      // pastikan title default dari nama file jika kosong
+      if (!item.title) item.title = titleFromFilename(item.file || item.name || '');
+    } else {
+      list = feGetList(site, type);
+      if (!list || index < 0 || index >= list.length) {
+        window.alert('Item tidak ditemukan (index ' + index + ').');
+        return;
+      }
+      item = Object.assign({}, list[index]);
     }
-    const item = Object.assign({}, list[index]);
 
     let box = document.getElementById('feEditFloat');
     if (!box) {
@@ -1823,7 +1935,11 @@
     }
 
     box.hidden = false;
-    document.getElementById('feEditTitle').textContent = 'Edit ' + type + ' #' + (index + 1);
+    if (type === 'galleryGroupFile') {
+      document.getElementById('feEditTitle').textContent = 'Edit foto grup #' + ((fileIdx || 0) + 1);
+    } else {
+      document.getElementById('feEditTitle').textContent = 'Edit ' + type + ' #' + (index + 1);
+    }
     const fields = document.getElementById('feEditFields');
     fields.innerHTML = '';
     schema.forEach((f) => {
@@ -1883,8 +1999,16 @@
         const el = document.getElementById('fe_' + f.key);
         if (el) item[f.key] = el.value.trim();
       });
-      list[index] = item;
-      await fePersist('✓ Tersimpan. Tampilan diperbarui.', true);
+      if (type === 'galleryGroupFile') {
+        list[fileIdx] = item;
+        // re-render uses galleryGroups
+        await fePersist('✓ Tersimpan. Tampilan diperbarui.', true);
+        // force re-render groups
+        try { renderGallery(site.gallery, site.media, site.galleryGroups); } catch (_) {}
+      } else {
+        list[index] = item;
+        await fePersist('✓ Tersimpan. Tampilan diperbarui.', true);
+      }
     };
 
     document.getElementById('feEditDup').onclick = async () => {
@@ -1908,13 +2032,23 @@
 
     document.getElementById('feEditDelete').onclick = async () => {
       if (!window.confirm('Hapus item ini secara permanen dari website?')) return;
-      list.splice(index, 1);
+      if (type === 'galleryGroupFile') {
+        list.splice(fileIdx, 1);
+      } else {
+        list.splice(index, 1);
+      }
       const ok = await fePersist('✓ Dihapus. Tampilan diperbarui.', true);
+      if (ok && type === 'galleryGroupFile') {
+        try { renderGallery(site.gallery, site.media, site.galleryGroups); } catch (_) {}
+      }
       if (!ok) {
-        // tidak bisa rollback mudah tanpa salinan — refresh dari sheets dianjurkan
         st.textContent = (st.textContent || '') + ' Refresh halaman jika tampilan tidak sesuai.';
       }
     };
+
+    // Sembunyikan Duplikat untuk item file dalam grup (kurang relevan)
+    const dupBtn = document.getElementById('feEditDup');
+    if (dupBtn) dupBtn.style.display = (type === 'galleryGroupFile') ? 'none' : '';
   }
 
   const FE_ADMIN_SESSION_MS = 20 * 60 * 1000; // 20 menit — lalu minta password lagi
@@ -2000,10 +2134,20 @@
       e.stopPropagation();
       if (typeof e.stopImmediatePropagation === 'function') e.stopImmediatePropagation();
 
-      const colon = key.lastIndexOf(':');
-      const type = key.slice(0, colon);
-      const index = parseInt(key.slice(colon + 1), 10);
-      if (!type || Number.isNaN(index)) return;
+      let type, index, extra;
+      if (key.indexOf('galleryGroupFile:') === 0) {
+        const parts = key.split(':');
+        if (parts.length < 3) return;
+        type = 'galleryGroupFile';
+        index = parseInt(parts[1], 10);
+        extra = parseInt(parts[2], 10);
+        if (Number.isNaN(index) || Number.isNaN(extra)) return;
+      } else {
+        const colon = key.lastIndexOf(':');
+        type = key.slice(0, colon);
+        index = parseInt(key.slice(colon + 1), 10);
+        if (!type || Number.isNaN(index)) return;
+      }
 
       try {
         const token = await feEnsureAdminToken();
@@ -2015,7 +2159,7 @@
           const j = await r.json();
           if (j && j.ok && j.data) window.__sditLiveSite = j.data;
         } catch (_) {}
-        openFeEditFloat(type, index, token);
+        openFeEditFloat(type, index, token, extra);
       } catch (err) {
         window.alert('Gagal membuka editor: ' + (err.message || err));
       }
@@ -2055,7 +2199,7 @@
       renderStats(data.stats);
       renderPrograms(data.programs);
       renderArticles(data.articles);
-      renderGallery(data.gallery, data.media);
+      renderGallery(data.gallery, data.media, data.galleryGroups);
       renderVideos(data.videos, data.media);
       renderActivities(data.activities);
       renderAnnouncements(data.announcements);

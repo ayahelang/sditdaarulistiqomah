@@ -203,6 +203,7 @@
     if (!j.data) throw new Error('Sheets belum berisi data site — klik Simpan sekali untuk mengisi');
     data = j.data;
     if (!data.media) data.media = [];
+    if (!Array.isArray(data.galleryGroups)) data.galleryGroups = [];
     if (!data.announcements) data.announcements = [];
     ensureSiteArrays(data);
     fillForm();
@@ -214,6 +215,7 @@
     const res = await fetch(DATA_URL, { cache: 'no-store' });
     data = await res.json();
     if (!data.media) data.media = [];
+    if (!Array.isArray(data.galleryGroups)) data.galleryGroups = [];
     if (!data.announcements) data.announcements = [];
     ensureSiteArrays(data);
     fillForm();
@@ -384,7 +386,16 @@
     gallery: [
       { key: 'title', label: 'Judul', type: 'text' },
       { key: 'image', label: 'URL / path gambar', type: 'text' },
+      { key: 'desc', label: 'Deskripsi (opsional)', type: 'textarea' },
       { key: 'type', label: 'Tipe', type: 'text' }
+    ],
+    galleryGroups: [
+      { key: 'name', label: 'Nama grup (wajib)', type: 'text' },
+      { key: 'folder', label: 'Path folder (wajib, contoh: images/foto/mabit)', type: 'text' },
+      { key: 'defaultTitle', label: 'Judul default (opsional — jika diisi, semua foto pakai judul ini; kosong = dari nama file)', type: 'text' },
+      { key: 'defaultDesc', label: 'Deskripsi default (opsional — jika diisi, tiap foto: deskripsi + nama file; kosong = tanpa deskripsi)', type: 'textarea' },
+      { key: 'order', label: 'Urutan (angka, kecil = atas)', type: 'text' },
+      { key: 'active', label: 'Aktif (true/false)', type: 'text' }
     ],
     videos: [
       { key: 'title', label: 'Judul', type: 'text' },
@@ -535,7 +546,7 @@
       facilities: 'name', teachers: 'name', leadership: 'name',
       achievements: 'title', calendar: 'title', faq: 'q',
       'ppdb.steps': 'title', 'ppdb.schedule': 'label', 'fees.items': 'name',
-      carousel: 'title', articles: 'title', gallery: 'title', videos: 'title', media: 'title',
+      carousel: 'title', articles: 'title', gallery: 'title', galleryGroups: 'name', videos: 'title', media: 'title',
       programs: 'title', activities: 'title', stats: 'label'
     }[type];
     if (requiredKey && !(item[requiredKey] || '').trim()) {
@@ -544,6 +555,20 @@
       if (el) { el.focus(); el.style.outline = '2px solid #c0392b'; }
       return;
     }
+    if (type === 'galleryGroups') {
+      if (!item.id) item.id = 'gg_' + Date.now();
+      if (item.active === undefined || item.active === '') item.active = true;
+      if (typeof item.active === 'string') item.active = (item.active.toLowerCase() !== 'false');
+      if (item.order !== undefined && item.order !== '') item.order = parseInt(item.order, 10) || 0;
+      if (!Array.isArray(item.files)) item.files = [];
+      item.folder = (item.folder || '').replace(/^\/+|\/+$/g, '');
+      if (!item.folder) {
+        status('✗ Path folder wajib diisi (contoh: images/foto/mabit)');
+        const el = document.getElementById('ef_folder');
+        if (el) { el.focus(); el.style.outline = '2px solid #c0392b'; }
+        return;
+      }
+    }
     if (index >= 0) list[index] = item;
     else list.unshift(item);
     window.__siteDirty = true;
@@ -551,6 +576,15 @@
     if (db) { db.hidden = false; db.style.display = 'block'; }
     closeEditor();
     renderLists();
+    // Grup baru / folder diisi: langsung scan folder → isi list file → siap simpan Sheets
+    if (type === 'galleryGroups') {
+      const gi = index >= 0 ? index : 0;
+      status('✓ Grup disimpan di panel. Memindai folder…');
+      scanGalleryGroupFolder(gi).then(function () {
+        status('✓ Galeri grup siap. Klik tombol hijau "Simpan ke Google Sheets" agar tampil di website.');
+      });
+      return;
+    }
     status('✓ Item disimpan di panel. Klik tombol hijau "Simpan ke Google Sheets" agar tampil di website publik.');
   }
 
@@ -989,6 +1023,183 @@
     });
   }
 
+
+  function titleFromFilenameAdmin(name) {
+    if (!name) return 'Foto';
+    return String(name)
+      .replace(/\.[^.]+$/, '')
+      .replace(/[-_]+/g, ' ')
+      .replace(/\s+/g, ' ')
+      .replace(/\b\w/g, function (c) { return c.toUpperCase(); })
+      .trim() || 'Foto';
+  }
+
+  async function scanGalleryGroupFolder(groupIndex) {
+    if (!data || !Array.isArray(data.galleryGroups)) {
+      status('Data belum dimuat.');
+      return;
+    }
+    const gg = data.galleryGroups[groupIndex];
+    if (!gg || !gg.folder) {
+      status('Isi path folder dulu (Edit grup).');
+      return;
+    }
+    const folder = String(gg.folder).replace(/^\/+|\/+$/g, '');
+    status('Memindai folder ' + folder + ' via GitHub API…');
+    try {
+      // Coba kedua repo (produksi & development)
+      const repos = ['ayahelang/darulistiqomah', 'ayahelang/sditdaarulistiqomah'];
+      let items = null;
+      let lastErr = null;
+      for (let r = 0; r < repos.length; r++) {
+        const api = 'https://api.github.com/repos/' + repos[r] + '/contents/' + encodeURIComponent(folder).replace(/%2F/g, '/');
+        try {
+          const res = await fetch(api, { headers: { Accept: 'application/vnd.github.v3+json' } });
+          if (res.ok) {
+            const json = await res.json();
+            if (Array.isArray(json)) { items = json; break; }
+          } else {
+            lastErr = 'GitHub API ' + res.status + ' (' + repos[r] + ')';
+          }
+        } catch (e) {
+          lastErr = e.message || String(e);
+        }
+      }
+      if (!items) {
+        throw new Error(lastErr || 'Folder tidak ditemukan di repo publik. Pastikan path benar dan file sudah di-push.');
+      }
+      const imgExt = /\.(jpe?g|png|gif|webp|bmp|avif)$/i;
+      const found = items
+        .filter(function (it) { return it.type === 'file' && imgExt.test(it.name); })
+        .map(function (it) { return it.name; })
+        .sort();
+      if (!found.length) {
+        status('Tidak ada file gambar (jpg/jpeg/png/webp/gif) di folder ' + folder);
+        return;
+      }
+      // Aturan judul & deskripsi:
+      // - defaultTitle diisi → semua foto pakai judul itu
+      // - defaultTitle kosong → judul dari nama file
+      // - defaultDesc diisi → deskripsi = defaultDesc + ' — ' + nama file (tanpa ekstensi)
+      // - defaultDesc kosong → deskripsi kosong (tidak ditampilkan di frontend)
+      // Merge: jika file sudah ada title/desc kustom, pertahankan
+      const oldMap = {};
+      (gg.files || []).forEach(function (f) {
+        if (f && f.file) oldMap[f.file] = f;
+      });
+      const defTitle = (gg.defaultTitle || '').trim();
+      const defDesc = (gg.defaultDesc || '').trim();
+      gg.files = found.map(function (name) {
+        const prev = oldMap[name];
+        const baseName = String(name).replace(/\.[^.]+$/, '');
+        let title, desc;
+        if (prev && prev.title && String(prev.title).trim()) {
+          title = prev.title;
+        } else if (defTitle) {
+          title = defTitle;
+        } else {
+          title = titleFromFilenameAdmin(name);
+        }
+        if (prev && prev.desc && String(prev.desc).trim()) {
+          desc = prev.desc;
+        } else if (defDesc) {
+          desc = defDesc + ' — ' + baseName;
+        } else {
+          desc = '';
+        }
+        return { file: name, title: title, desc: desc };
+      });
+      if (gg.active === undefined) gg.active = true;
+      window.__siteDirty = true;
+      const db = document.getElementById('dirtyBanner');
+      if (db) { db.hidden = false; db.style.display = 'block'; }
+      renderLists();
+      status('✓ Scan selesai: ' + found.length + ' foto dari ' + folder + '. Klik Simpan ke Google Sheets.');
+    } catch (err) {
+      status('✗ Scan gagal: ' + (err.message || err));
+      console.error(err);
+    }
+  }
+
+  function openGroupFilesEditor(groupIndex) {
+    if (!data || !Array.isArray(data.galleryGroups)) return;
+    const gg = data.galleryGroups[groupIndex];
+    if (!gg) return;
+    const files = Array.isArray(gg.files) ? gg.files : [];
+    if (!files.length) {
+      status('Belum ada file. Klik Scan Folder dulu.');
+      return;
+    }
+
+    let box = document.getElementById('groupFilesModal');
+    if (!box) {
+      box = document.createElement('div');
+      box.id = 'groupFilesModal';
+      box.className = 'edit-modal';
+      box.hidden = true;
+      box.innerHTML = `
+        <div class="edit-modal-inner" style="max-width:min(920px,96vw);width:96vw;max-height:90vh;display:flex;flex-direction:column;">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:.75rem;flex-shrink:0">
+            <h2 id="gfTitle" style="margin:0;font-size:1.1rem;color:#084C37">Edit judul &amp; deskripsi foto</h2>
+            <button type="button" class="btn btn-ghost" id="gfClose">Tutup</button>
+          </div>
+          <p id="gfHint" class="hint" style="margin:0 0 .75rem;flex-shrink:0"></p>
+          <div id="gfBody" style="overflow:auto;flex:1;padding-right:4px"></div>
+          <div style="display:flex;gap:8px;justify-content:flex-end;padding-top:12px;flex-shrink:0;border-top:1px solid #e5e7eb;margin-top:12px">
+            <button type="button" class="btn btn-ghost" id="gfCancel">Batal</button>
+            <button type="button" class="btn btn-primary" id="gfSave">Terapkan</button>
+          </div>
+        </div>`;
+      document.body.appendChild(box);
+      const close = function () { box.hidden = true; };
+      document.getElementById('gfClose').onclick = close;
+      document.getElementById('gfCancel').onclick = close;
+      box.addEventListener('click', function (e) { if (e.target === box) close(); });
+    }
+    box.hidden = false;
+    document.getElementById('gfTitle').textContent = 'Edit foto — ' + (gg.name || gg.folder || 'Grup');
+    document.getElementById('gfHint').textContent =
+      (files.length) + ' foto · folder: ' + (gg.folder || '-') +
+      ' · ubah judul/deskripsi lalu Terapkan, kemudian Simpan ke Google Sheets.';
+    const body = document.getElementById('gfBody');
+    body.innerHTML = '';
+    const folder = (gg.folder || '').replace(/\/+$/, '');
+    files.forEach(function (f, i) {
+      const row = document.createElement('div');
+      row.className = 'gg-file-row';
+      row.style.cssText = 'border:1px solid #e5e7eb;border-radius:12px;padding:10px;margin-bottom:10px;display:grid;grid-template-columns:88px 1fr;gap:12px;align-items:start;background:#fff';
+      const imgPath = folder ? (folder + '/' + (f.file || '')) : (f.file || '');
+      row.innerHTML =
+        '<div style="width:88px;height:88px;border-radius:8px;overflow:hidden;background:#f3f4f6;flex-shrink:0">' +
+          (imgPath
+            ? '<img src="' + escapeHtml(imgPath) + '" alt="" style="width:100%;height:100%;object-fit:cover" loading="lazy" onerror="this.style.display=\'none\'">'
+            : '') +
+        '</div>' +
+        '<div style="display:grid;gap:6px">' +
+          '<div style="font-size:.78rem;color:#6b7280"><code>' + escapeHtml(f.file || '') + '</code></div>' +
+          '<label style="font-size:.75rem;font-weight:600">Judul' +
+            '<input type="text" data-gf-i="' + i + '" data-gf-k="title" value="' + escapeHtml(f.title || '') + '" style="width:100%;margin-top:2px"></label>' +
+          '<label style="font-size:.75rem;font-weight:600">Deskripsi' +
+            '<input type="text" data-gf-i="' + i + '" data-gf-k="desc" value="' + escapeHtml(f.desc || '') + '" style="width:100%;margin-top:2px"></label>' +
+        '</div>';
+      body.appendChild(row);
+    });
+    document.getElementById('gfSave').onclick = function () {
+      body.querySelectorAll('[data-gf-i]').forEach(function (inp) {
+        const i = parseInt(inp.getAttribute('data-gf-i'), 10);
+        const k = inp.getAttribute('data-gf-k');
+        if (files[i]) files[i][k] = inp.value.trim();
+      });
+      gg.files = files;
+      window.__siteDirty = true;
+      const db = document.getElementById('dirtyBanner');
+      if (db) { db.hidden = false; db.style.display = 'block'; }
+      box.hidden = true;
+      renderLists();
+      status('Judul/desc diperbarui (belum disimpan ke Sheets). Klik Simpan ke Google Sheets.');
+    };
+  }
+
   function renderLists() {
     renderAnnList();
     renderExtraLists();
@@ -1087,6 +1298,116 @@
         row.appendChild(mid);
         row.appendChild(rowActions('gallery', i));
         gBox.appendChild(row);
+      });
+    }
+
+    const ggBox = $('galleryGroupList');
+    if (ggBox) {
+      ggBox.innerHTML = '';
+      if (!Array.isArray(data.galleryGroups)) data.galleryGroups = [];
+      (data.galleryGroups || []).forEach((gg, i) => {
+        const row = document.createElement('div');
+        row.className = 'list-item gg-admin-card';
+        row.style.cssText = 'flex-direction:column;align-items:stretch;gap:10px';
+
+        const top = document.createElement('div');
+        top.style.cssText = 'display:flex;flex-wrap:wrap;justify-content:space-between;gap:10px;align-items:flex-start';
+
+        const mid = document.createElement('div');
+        mid.className = 'li-info';
+        const fileCount = Array.isArray(gg.files) ? gg.files.length : 0;
+        const activeBadge = gg.active === false
+          ? '<span class="badge" style="background:#fee2e2;color:#991b1b">nonaktif</span>'
+          : '<span class="badge foto">aktif</span>';
+        mid.innerHTML = `${activeBadge} <strong>${escapeHtml(gg.name || '(tanpa nama)')}</strong>
+          <div class="meta">Folder: <code>${escapeHtml(gg.folder || '')}</code> · ${fileCount} file · order ${escapeHtml(String(gg.order != null ? gg.order : ''))}</div>`;
+        top.appendChild(mid);
+
+        const acts = document.createElement('div');
+        acts.className = 'li-actions';
+        acts.style.cssText = 'flex-wrap:wrap';
+
+        const btnScan = document.createElement('button');
+        btnScan.type = 'button';
+        btnScan.className = 'btn btn-accent';
+        btnScan.textContent = 'Scan Folder';
+        btnScan.title = 'Deteksi file foto di folder via GitHub API';
+        btnScan.onclick = () => scanGalleryGroupFolder(i);
+        acts.appendChild(btnScan);
+
+        const btnEdit = document.createElement('button');
+        btnEdit.type = 'button';
+        btnEdit.className = 'btn btn-ghost';
+        btnEdit.textContent = 'Edit Grup';
+        btnEdit.onclick = () => openEditor('galleryGroups', i);
+        acts.appendChild(btnEdit);
+
+        const btnFiles = document.createElement('button');
+        btnFiles.type = 'button';
+        btnFiles.className = 'btn btn-primary';
+        btnFiles.textContent = 'Lihat / Edit Foto';
+        btnFiles.title = 'Preview + edit judul & deskripsi tiap foto';
+        btnFiles.onclick = () => openGroupFilesEditor(i);
+        acts.appendChild(btnFiles);
+
+        const btnDel = document.createElement('button');
+        btnDel.type = 'button';
+        btnDel.className = 'btn btn-danger';
+        btnDel.textContent = 'Hapus';
+        btnDel.onclick = () => {
+          if (!confirm('Hapus grup "' + (gg.name || '') + '"?')) return;
+          data.galleryGroups.splice(i, 1);
+          window.__siteDirty = true;
+          renderLists();
+          status('Grup dihapus (belum disimpan ke Sheets).');
+        };
+        acts.appendChild(btnDel);
+        top.appendChild(acts);
+        row.appendChild(top);
+
+        // Preview thumbnails
+        const files = Array.isArray(gg.files) ? gg.files : [];
+        const folder = (gg.folder || '').replace(/\/+$/, '');
+        if (files.length) {
+          const prev = document.createElement('div');
+          prev.className = 'gg-admin-preview';
+          prev.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fill,minmax(88px,1fr));gap:8px';
+          const maxShow = Math.min(files.length, 12);
+          for (let fi = 0; fi < maxShow; fi++) {
+            const f = files[fi];
+            const cell = document.createElement('button');
+            cell.type = 'button';
+            cell.title = (f.title || f.file || '') + ' — klik untuk edit semua foto';
+            cell.style.cssText = 'border:1px solid #e5e7eb;border-radius:10px;overflow:hidden;padding:0;background:#f9fafb;cursor:pointer;text-align:left';
+            const src = folder ? (folder + '/' + (f.file || '')) : (f.file || '');
+            cell.innerHTML =
+              '<div style="aspect-ratio:1;background:#e5e7eb">' +
+                (src ? '<img src="' + escapeHtml(src) + '" alt="" loading="lazy" style="width:100%;height:100%;object-fit:cover" onerror="this.parentElement.style.background=\'#d1d5db\'">' : '') +
+              '</div>' +
+              '<div style="padding:4px 6px;font-size:.68rem;line-height:1.25;max-height:2.6em;overflow:hidden">' +
+                escapeHtml(f.title || f.file || '') +
+              '</div>';
+            cell.onclick = () => openGroupFilesEditor(i);
+            prev.appendChild(cell);
+          }
+          if (files.length > maxShow) {
+            const more = document.createElement('button');
+            more.type = 'button';
+            more.className = 'btn btn-ghost';
+            more.style.cssText = 'min-height:88px';
+            more.textContent = '+' + (files.length - maxShow) + ' lagi';
+            more.onclick = () => openGroupFilesEditor(i);
+            prev.appendChild(more);
+          }
+          row.appendChild(prev);
+        } else {
+          const empty = document.createElement('div');
+          empty.className = 'hint';
+          empty.textContent = 'Belum ada foto. Klik Scan Folder setelah path folder diisi.';
+          row.appendChild(empty);
+        }
+
+        ggBox.appendChild(row);
       });
     }
 
@@ -1294,6 +1615,8 @@
   $('btnAddArticle').onclick = () => openEditor('articles', -1);
   $('btnAddGallery').onclick = () => openEditor('gallery', -1);
   const bv = $('btnAddVideo'); if (bv) bv.onclick = () => openEditor('videos', -1);
+  const bgg = $('btnAddGalleryGroup');
+  if (bgg) bgg.onclick = () => openEditor('galleryGroups', -1);
 
   updateSheetsHint();
   (async () => {
