@@ -92,6 +92,106 @@
   /** State buka/tutup + pagination per grup galeri folder */
   const _ggOpen = Object.create(null);
   const _ggShown = Object.create(null);
+  /** Filter & sort galeri / video */
+  const _mediaFilter = {
+    gallery: { q: '', sort: 'newest' },
+    videos: { q: '', sort: 'newest' }
+  };
+
+  function parseItemDate(it) {
+    const raw = (it && (it.date || it.createdAt || it.updatedAt || it.ts)) || '';
+    if (!raw) return 0;
+    const t = Date.parse(raw);
+    return isNaN(t) ? 0 : t;
+  }
+
+  function applyMediaFilter(list, kind) {
+    const f = _mediaFilter[kind] || { q: '', sort: 'newest' };
+    const q = (f.q || '').trim().toLowerCase();
+    let out = (list || []).slice();
+    if (q) {
+      out = out.filter(function (it) {
+        const hay = [
+          it.title, it.desc, it.description, it.name,
+          it.source, it.file, it.folder, it.url
+        ].map(function (x) { return String(x || '').toLowerCase(); }).join(' ');
+        return hay.indexOf(q) !== -1;
+      });
+    }
+    const dir = (f.sort === 'oldest') ? 1 : -1; // newest default
+    out.sort(function (a, b) {
+      const da = parseItemDate(a);
+      const db = parseItemDate(b);
+      if (da !== db) return (da - db) * dir;
+      // fallback: index asli (lebih besar = lebih baru jika unshift)
+      const ia = (a._idx != null) ? a._idx : 0;
+      const ib = (b._idx != null) ? b._idx : 0;
+      return (ia - ib) * dir;
+    });
+    return out;
+  }
+
+  function ensureMediaToolbar(kind, box) {
+    if (!box || !box.parentNode) return null;
+    const id = kind + 'Toolbar';
+    let bar = document.getElementById(id);
+    if (!bar) {
+      bar = document.createElement('div');
+      bar.id = id;
+      bar.className = 'media-toolbar';
+      bar.innerHTML =
+        '<div class="media-toolbar-search">' +
+          '<input type="search" id="' + kind + 'Search" placeholder="Cari judul, deskripsi…" autocomplete="off">' +
+        '</div>' +
+        '<div class="media-toolbar-sort" role="group" aria-label="Urutkan">' +
+          '<button type="button" class="media-sort-btn" data-sort="newest">Terbaru</button>' +
+          '<button type="button" class="media-sort-btn" data-sort="oldest">Terlama</button>' +
+        '</div>';
+      box.parentNode.insertBefore(bar, box);
+      const input = bar.querySelector('input');
+      const state = _mediaFilter[kind];
+      input.value = state.q || '';
+      let timer = null;
+      input.addEventListener('input', function () {
+        const v = input.value;
+        clearTimeout(timer);
+        timer = setTimeout(function () {
+          state.q = v;
+          if (kind === 'gallery') {
+            shown.gallery = 0; // reset page via init on next render
+            const ev = window.__rerenderGallery;
+            if (typeof ev === 'function') ev();
+          } else {
+            shown.videos = 0;
+            const ev = window.__rerenderVideos;
+            if (typeof ev === 'function') ev();
+          }
+        }, 220);
+      });
+      bar.querySelectorAll('.media-sort-btn').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          state.sort = btn.getAttribute('data-sort') || 'newest';
+          if (kind === 'gallery') {
+            shown.gallery = 0;
+            if (typeof window.__rerenderGallery === 'function') window.__rerenderGallery();
+          } else {
+            shown.videos = 0;
+            if (typeof window.__rerenderVideos === 'function') window.__rerenderVideos();
+          }
+        });
+      });
+    }
+    // sync active button
+    const state = _mediaFilter[kind];
+    bar.querySelectorAll('.media-sort-btn').forEach(function (btn) {
+      const on = btn.getAttribute('data-sort') === (state.sort || 'newest');
+      btn.classList.toggle('is-active', on);
+      btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+    });
+    const input = bar.querySelector('input');
+    if (input && document.activeElement !== input) input.value = state.q || '';
+    return bar;
+  }
 
   function bindLoadMore(btnId, wrapId, key, renderPage) {
     const btn = document.getElementById(btnId);
@@ -388,7 +488,9 @@
         title: g.title,
         image: g.image,
         desc: g.desc || '',
+        date: g.date || '',
         type: 'foto',
+        _idx: idx,
         _edit: 'gallery:' + idx
       });
     });
@@ -398,15 +500,25 @@
           title: m.title || 'Foto',
           image: m.thumb || '',
           desc: m.description || m.desc || '',
+          date: m.date || '',
           url: m.url,
           source: m.source,
           type: 'foto',
+          _idx: 100000 + idx,
           _edit: 'media:' + idx
         });
       }
     });
-    _lists.gallery = list;
-    initShown('gallery', list.length);
+    _lists.galleryAll = list;
+    ensureMediaToolbar('gallery', box);
+    window.__rerenderGallery = function () {
+      renderGallery(items, media, groups);
+    };
+    const filteredG = applyMediaFilter(list, 'gallery');
+    _lists.gallery = filteredG;
+    // reset shown when filter shrinks below current
+    if (shown.gallery > filteredG.length) shown.gallery = filteredG.length;
+    initShown('gallery', filteredG.length);
 
     const activeGroups = (groups || [])
       .filter(function (gg) { return gg && gg.active !== false; })
@@ -439,13 +551,31 @@
       }
       updateMoreBtn('galleryMoreWrap', 'gallery');
 
-      // 2) Gallery groups (folder-based) — default tertutup
+      // 2) Gallery groups (folder-based) — default tertutup, collapsible
+      // Batch grup tertutup ke grid 3 kolom (lebar = card biasa)
+      let collapsedBatch = null;
+      function flushCollapsedBatch() {
+        if (collapsedBatch && collapsedBatch.childNodes.length) {
+          box.appendChild(collapsedBatch);
+        }
+        collapsedBatch = null;
+      }
+
       activeGroups.forEach(function (gg, gIdx) {
         const files = Array.isArray(gg.files) ? gg.files : [];
         if (!files.length) return;
         const folder = (gg.folder || '').replace(/\/+$/, '');
         const gKey = String(gg.id || gg.folder || gg.name || gIdx);
         const isOpen = !!_ggOpen[gKey];
+
+        // filter grup by search (nama / folder / file titles)
+        const q = ((_mediaFilter.gallery && _mediaFilter.gallery.q) || '').trim().toLowerCase();
+        if (q) {
+          const hay = [gg.name, gg.folder].concat(files.map(function (f) {
+            return (f.title || '') + ' ' + (f.file || '') + ' ' + (f.desc || '');
+          })).join(' ').toLowerCase();
+          if (hay.indexOf(q) === -1) return;
+        }
 
         function fileToCard(f, fIdx) {
           const fname = f.file || f.name || '';
@@ -461,14 +591,23 @@
           };
         }
 
+        // sort files in group (newest default = reverse index / by name)
+        let fileOrder = files.map(function (f, i) { return { f: f, i: i }; });
+        const gSort = (_mediaFilter.gallery && _mediaFilter.gallery.sort) || 'newest';
+        fileOrder.sort(function (a, b) {
+          const na = String(a.f.file || a.f.name || '');
+          const nb = String(b.f.file || b.f.name || '');
+          if (gSort === 'oldest') return na.localeCompare(nb) || (a.i - b.i);
+          return nb.localeCompare(na) || (b.i - a.i);
+        });
+
         const groupEl = el('div', {
           class: 'gallery-group' + (isOpen ? ' is-open' : ' is-collapsed'),
           'data-gg-key': gKey
         }, []);
 
         if (!isOpen) {
-          // ---- Ringkas: judul + jumlah + thumbnail pertama ----
-          const first = fileToCard(files[0], 0);
+          const first = fileToCard(fileOrder[0].f, fileOrder[0].i);
           const summary = el('button', {
             type: 'button',
             class: 'gg-summary',
@@ -480,9 +619,6 @@
                 _ggShown[gKey] = Math.min(PAGE.galleryGroup, files.length);
               }
               paint();
-              try {
-                groupEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-              } catch (_) {}
             }
           }, []);
 
@@ -493,20 +629,24 @@
             thumbWrap.appendChild(el('div', { class: 'gallery-placeholder' }, ['Foto']));
           }
           summary.appendChild(thumbWrap);
-
-          const meta = el('div', { class: 'gg-summary-meta' }, [
+          summary.appendChild(el('div', { class: 'gg-summary-meta' }, [
             el('div', { class: 'gg-summary-name' }, [gg.name || 'Galeri']),
             el('div', { class: 'gg-summary-count' }, [String(files.length) + ' foto']),
             el('div', { class: 'gg-summary-hint' }, ['Klik untuk membuka'])
-          ]);
-          summary.appendChild(meta);
+          ]));
           summary.appendChild(el('span', { class: 'gg-summary-chevron', 'aria-hidden': 'true' }, ['▸']));
           groupEl.appendChild(summary);
-          box.appendChild(groupEl);
+
+          if (!collapsedBatch) {
+            collapsedBatch = el('div', { class: 'gallery-grid gg-collapsed-grid' }, []);
+          }
+          collapsedBatch.appendChild(groupEl);
           return;
         }
 
-        // ---- Terbuka: judul + lipat + grid + muat lebih banyak ----
+        // terbuka → tutup batch collapsed sebelumnya
+        flushCollapsedBatch();
+
         if (!_ggShown[gKey] || _ggShown[gKey] < 1) {
           _ggShown[gKey] = Math.min(PAGE.galleryGroup, files.length);
         }
@@ -517,24 +657,21 @@
           gg.name || 'Galeri',
           el('span', { class: 'gg-count' }, [String(files.length) + ' foto'])
         ]));
-
-        const btnFold = el('button', {
+        titleRow.appendChild(el('button', {
           type: 'button',
           class: 'btn btn-ghost gg-fold-btn',
-          title: 'Tutup grup ini',
           onclick: function (ev) {
             ev.preventDefault();
             _ggOpen[gKey] = false;
             paint();
           }
-        }, ['▴ Lipat grup']);
-        titleRow.appendChild(btnFold);
+        }, ['▴ Lipat grup']));
         groupEl.appendChild(titleRow);
 
         const grid = el('div', { class: 'gallery-grid' }, []);
         const nShow = _ggShown[gKey];
-        files.slice(0, nShow).forEach(function (f, fIdx) {
-          const g = fileToCard(f, fIdx);
+        fileOrder.slice(0, nShow).forEach(function (pair) {
+          const g = fileToCard(pair.f, pair.i);
           const card = makeGalleryCard(g);
           grid.appendChild(card);
           attachEngagement(card, 'gallery', g._edit);
@@ -544,7 +681,7 @@
         const left = files.length - nShow;
         if (left > 0) {
           const moreWrap = el('div', { class: 'load-more-wrap gg-more-wrap' }, []);
-          const moreBtn = el('button', {
+          moreWrap.appendChild(el('button', {
             type: 'button',
             class: 'btn btn-ghost load-more-btn',
             onclick: function (ev) {
@@ -552,13 +689,11 @@
               _ggShown[gKey] = Math.min(nShow + PAGE.galleryGroup, files.length);
               paint();
             }
-          }, ['Muat lebih banyak (' + left + ' tersisa)']);
-          moreWrap.appendChild(moreBtn);
+          }, ['Muat lebih banyak (' + left + ' tersisa)']));
           groupEl.appendChild(moreWrap);
         }
 
-        // Tombol lipat juga di bawah grid (mudah dijangkau setelah scroll)
-        const foldBottom = el('div', { class: 'gg-fold-bottom' }, [
+        groupEl.appendChild(el('div', { class: 'gg-fold-bottom' }, [
           el('button', {
             type: 'button',
             class: 'btn btn-ghost gg-fold-btn',
@@ -566,18 +701,14 @@
               ev.preventDefault();
               _ggOpen[gKey] = false;
               paint();
-              try {
-                const el2 = box.querySelector('[data-gg-key="' + gKey.replace(/"/g, '') + '"]');
-                if (el2) el2.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-              } catch (_) {}
             }
           }, ['▴ Lipat grup · ' + (gg.name || '')])
-        ]);
-        groupEl.appendChild(foldBottom);
-
+        ]));
         box.appendChild(groupEl);
       });
+      flushCollapsedBatch();
     };
+
     bindLoadMore('galleryMore', 'galleryMoreWrap', 'gallery', paint);
     paint();
   }
@@ -587,7 +718,10 @@
     if (!box) return;
     const list = [];
     (videos || []).forEach((v, idx) => {
-      list.push({ title: v.title, thumb: v.thumb, youtubeId: v.youtubeId, source: 'youtube', _edit: 'videos:' + idx });
+      list.push({
+        title: v.title, thumb: v.thumb, youtubeId: v.youtubeId, source: 'youtube',
+        date: v.date || '', _idx: idx, _edit: 'videos:' + idx
+      });
     });
     (media || []).forEach((m, idx) => {
       if (m.type === 'video') {
@@ -597,12 +731,19 @@
           embedUrl: m.embedUrl,
           url: m.url,
           source: m.source,
+          date: m.date || '',
+          _idx: 100000 + idx,
           _edit: 'media:' + idx
         });
       }
     });
-    _lists.videos = list;
-    initShown('videos', list.length);
+    ensureMediaToolbar('videos', box);
+    window.__rerenderVideos = function () { renderVideos(videos, media); };
+    _lists.videosAll = list;
+    const filteredV = applyMediaFilter(list, 'videos');
+    _lists.videos = filteredV;
+    if (shown.videos > filteredV.length) shown.videos = filteredV.length;
+    initShown('videos', filteredV.length);
     const paint = () => {
       box.innerHTML = '';
       _lists.videos.slice(0, shown.videos).forEach((v) => {

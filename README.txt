@@ -1,9 +1,7 @@
-Produksi — sditdaarulistiqomah.sch.id
+Produksi sditdaarulistiqomah.sch.id
 
-Fitur baru grup galeri frontend:
-- Default: tertutup (judul + jumlah foto + thumbnail pertama)
-- Klik ringkasan → buka grup, kartu dimuat bertahap (6 per klik)
-- Tombol "Muat lebih banyak" per grup
-- Tombol "Lipat grup" (atas & bawah) untuk menutup lagi
+- Grup collapsible + load-more
+- Search + sort Terbaru/Terlama (galeri & video), default Terbaru
+- Grup tertutup: grid 3 kolom selebar card biasa
 
-File: js/admin.js, js/app.js, css/style.css
+File: js/admin.js js/app.js css/style.css
