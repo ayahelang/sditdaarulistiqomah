@@ -54,6 +54,9 @@ function handleRequest(e, method) {
     if (action === 'adminLogin') {
       return json_(adminLogin_(body.password || (e.parameter && e.parameter.password) || ''));
     }
+    if (action === 'fetchYtPlaylist') {
+      return json_(fetchYtPlaylist_(body.url || body.playlistUrl || (e.parameter && e.parameter.url) || ''));
+    }
     if (action === 'listEditors') {
       return json_(listEditors_());
     }
@@ -759,4 +762,69 @@ function updateEditorPassword_(body) {
   }
   setEditorPasswords_(list);
   return { ok: true, message: 'Editor diperbarui' };
+}
+
+
+/** Ambil daftar video dari playlist YouTube via feed Atom (tanpa API key). */
+function fetchYtPlaylist_(playlistUrl) {
+  var id = extractPlaylistId_(playlistUrl);
+  if (!id) return { ok: false, error: 'URL playlist tidak valid. Contoh: https://www.youtube.com/playlist?list=PLxxxx' };
+  var feed = 'https://www.youtube.com/feeds/videos.xml?playlist_id=' + encodeURIComponent(id);
+  try {
+    var resp = UrlFetchApp.fetch(feed, { muteHttpExceptions: true, followRedirects: true });
+    var code = resp.getResponseCode();
+    var text = resp.getContentText() || '';
+    if (code >= 400) {
+      return { ok: false, error: 'Gagal ambil playlist (HTTP ' + code + '). Pastikan playlist publik.' };
+    }
+    var items = parseYtAtomFeed_(text);
+    return { ok: true, playlistId: id, count: items.length, items: items };
+  } catch (err) {
+    return { ok: false, error: String(err.message || err) };
+  }
+}
+
+function extractPlaylistId_(url) {
+  var s = String(url || '').trim();
+  if (!s) return '';
+  var m = s.match(/[?&]list=([A-Za-z0-9_-]+)/);
+  if (m) return m[1];
+  if (/^PL[A-Za-z0-9_-]+$/.test(s) || /^UU[A-Za-z0-9_-]+$/.test(s)) return s;
+  return '';
+}
+
+function parseYtAtomFeed_(xml) {
+  var items = [];
+  // entry blocks
+  var parts = String(xml || '').split('<entry');
+  for (var i = 1; i < parts.length; i++) {
+    var block = parts[i];
+    var id = '';
+    var mVid = block.match(/<yt:videoId>([^<]+)<\/yt:videoId>/);
+    if (mVid) id = mVid[1];
+    if (!id) {
+      var mLink = block.match(/\/watch\?v=([A-Za-z0-9_-]+)/);
+      if (mLink) id = mLink[1];
+    }
+    if (!id) continue;
+    var title = '';
+    var mTitle = block.match(/<title[^>]*>([^<]*)<\/title>/);
+    if (mTitle) title = mTitle[1];
+    // decode basic entities
+    title = title.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'");
+    var desc = '';
+    var mMedia = block.match(/<media:description[^>]*>([\s\S]*?)<\/media:description>/);
+    if (mMedia) {
+      desc = mMedia[1].replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1');
+      desc = desc.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+      if (desc.length > 280) desc = desc.slice(0, 277) + '…';
+    }
+    items.push({
+      youtubeId: id,
+      title: title || ('Video ' + id),
+      desc: desc,
+      thumb: 'https://img.youtube.com/vi/' + id + '/hqdefault.jpg'
+    });
+  }
+  return items;
 }

@@ -48,6 +48,7 @@
     const data = await res.json();
     if (!data.media) data.media = [];
     if (!Array.isArray(data.galleryGroups)) data.galleryGroups = [];
+    if (!Array.isArray(data.videoGroups)) data.videoGroups = [];
     console.info('[SDIT] Data dari data/site.json (fallback)');
     return data;
   }
@@ -101,12 +102,14 @@
       return 6;
     }
   }
-  const PAGE = { articles: 6, gallery: 6, videos: 4, galleryGroup: adaptiveGalleryGroupPage() };
+  const PAGE = { articles: 6, gallery: 6, videos: 4, galleryGroup: adaptiveGalleryGroupPage(), videoGroup: adaptiveGalleryGroupPage() };
   const shown = { articles: 0, gallery: 0, videos: 0 };
   let _lists = { articles: [], gallery: [], videos: [] };
   /** State buka/tutup + pagination per grup galeri folder */
   const _ggOpen = Object.create(null);
   const _ggShown = Object.create(null);
+  const _vgOpen = Object.create(null);
+  const _vgShown = Object.create(null);
   /** Filter & sort galeri / video */
   const _mediaFilter = {
     gallery: { q: '', sort: 'newest' },
@@ -156,7 +159,11 @@
       bar.className = 'media-toolbar';
       bar.innerHTML =
         '<div class="media-toolbar-search">' +
-          '<input type="search" id="' + kind + 'Search" placeholder="Cari judul, deskripsi…" autocomplete="off">' +
+          // type=text + readonly awal: browser jarang autofill email ke field ini
+          '<input type="text" id="' + kind + 'Search" name="sdit_filter_' + kind + '_' + Date.now() + '" ' +
+            'placeholder="Cari judul, deskripsi…" autocomplete="new-password" autocorrect="off" ' +
+            'autocapitalize="off" spellcheck="false" inputmode="search" ' +
+            'data-lpignore="true" data-1p-ignore="true" data-form-type="other" readonly>' +
         '</div>' +
         '<div class="media-toolbar-sort" role="group" aria-label="Urutkan">' +
           '<button type="button" class="media-sort-btn" data-sort="newest">Terbaru</button>' +
@@ -165,7 +172,38 @@
       box.parentNode.insertBefore(bar, box);
       const input = bar.querySelector('input');
       const state = _mediaFilter[kind];
+      function cleanQ(v) {
+        v = String(v || '').trim();
+        if (/@/.test(v) || /password/i.test(v) || /^[\w.+-]+@/.test(v)) return '';
+        return v;
+      }
+      state.q = cleanQ(state.q);
       input.value = state.q || '';
+      // buka readonly hanya saat user fokus (cegah autofill)
+      input.addEventListener('focus', function () {
+        input.removeAttribute('readonly');
+        input.setAttribute('autocomplete', 'off');
+      });
+      input.addEventListener('blur', function () {
+        // kalau terisi email, bersihkan
+        var v = cleanQ(input.value);
+        if (v !== input.value) {
+          input.value = v;
+          state.q = v;
+          if (kind === 'gallery' && typeof window.__rerenderGallery === 'function') window.__rerenderGallery();
+          if (kind === 'videos' && typeof window.__rerenderVideos === 'function') window.__rerenderVideos();
+        }
+      });
+      // interval singkat: buang autofill yang masuk tanpa event
+      var guard = 0;
+      var guardTimer = setInterval(function () {
+        guard++;
+        if (guard > 20) { clearInterval(guardTimer); return; }
+        if (/@/.test(input.value)) {
+          input.value = '';
+          state.q = '';
+        }
+      }, 200);
       let timer = null;
       input.addEventListener('input', function () {
         const v = input.value;
@@ -608,7 +646,9 @@
       const first = fileToCard(gg, files[0], 0, gIdx);
       const groupEl = el('div', {
         class: 'gallery-group is-collapsed',
-        'data-gg-key': gKey
+        'data-gg-key': gKey,
+        'data-admin-edit': 'galleryGroups:' + gIdx,
+        title: 'Ctrl+Alt+Shift + double-click untuk edit grup'
       }, []);
       const summary = el('button', {
         type: 'button',
@@ -805,65 +845,280 @@
     paint();
   }
 
-  function renderVideos(videos, media) {
+  function renderVideos(videos, media, groups) {
     const box = document.getElementById('videos');
     if (!box) return;
+
     const list = [];
-    (videos || []).forEach((v, idx) => {
+    (videos || []).forEach(function (v, idx) {
       list.push({
-        title: v.title, thumb: v.thumb, youtubeId: v.youtubeId, source: 'youtube',
-        date: v.date || '', _idx: idx, _edit: 'videos:' + idx
+        title: v.title,
+        thumb: v.thumb,
+        youtubeId: v.youtubeId,
+        source: 'youtube',
+        desc: v.desc || v.description || '',
+        date: v.date || '',
+        _idx: idx,
+        _edit: 'videos:' + idx
       });
     });
-    (media || []).forEach((m, idx) => {
+    (media || []).forEach(function (m, idx) {
       if (m.type === 'video') {
         list.push({
           title: m.title || 'Video',
           thumb: m.thumb,
           embedUrl: m.embedUrl,
           url: m.url,
+          youtubeId: m.shortcode || m.youtubeId || '',
           source: m.source,
+          desc: m.description || m.desc || '',
           date: m.date || '',
           _idx: 100000 + idx,
           _edit: 'media:' + idx
         });
       }
     });
+
     ensureMediaToolbar('videos', box);
-    window.__rerenderVideos = function () { renderVideos(videos, media); };
-    _lists.videosAll = list;
-    const filteredV = applyMediaFilter(list, 'videos');
-    _lists.videos = filteredV;
-    if (shown.videos > filteredV.length) shown.videos = filteredV.length;
-    initShown('videos', filteredV.length);
-    const paint = () => {
-      box.innerHTML = '';
-      _lists.videos.slice(0, shown.videos).forEach((v) => {
-        const kids = [];
-        if (v.thumb) kids.push(el('img', { src: v.thumb, alt: v.title || '', loading: 'lazy' }));
-        else kids.push(el('div', { class: 'video-placeholder' }, [v.source === 'instagram' ? 'Instagram Reel' : (v.source || 'Video')]));
-        kids.push(el('div', { class: 'play' }, [el('span', {}, ['▶'])]));
-        const vcard = el('article', {
-          class: 'video-card',
-          'data-admin-edit': v._edit || '',
-          title: 'Ctrl+Alt+Shift + double-click untuk edit'
-        }, [
-          el('div', {
-            class: 'video-thumb',
-            onclick: function (ev) {
-              if (ev.ctrlKey && ev.altKey && ev.shiftKey) return;
-              if (v.youtubeId) openVideo(v.youtubeId);
-              else if (v.embedUrl) openEmbed(v.embedUrl);
-              else if (v.url) window.open(v.url, '_blank', 'noopener');
-            }
-          }, kids),
-          el('h3', {}, [v.title || 'Video'])
-        ]);
-        box.appendChild(vcard);
-        attachEngagement(vcard, 'videos', v._edit || v.youtubeId || ('video-' + Math.random()));
+    window.__rerenderVideos = function () {
+      renderVideos(videos, media, groups);
+    };
+
+    const activeGroups = (groups || [])
+      .filter(function (gg) { return gg && gg.active !== false; })
+      .slice()
+      .sort(function (a, b) { return (a.order || 0) - (b.order || 0); });
+
+    const q = ((_mediaFilter.videos && _mediaFilter.videos.q) || '').trim().toLowerCase();
+
+    function makeVideoCard(v) {
+      const kids = [];
+      if (v.thumb) kids.push(el('img', { src: v.thumb, alt: v.title || '', loading: 'lazy' }));
+      else kids.push(el('div', { class: 'video-placeholder' }, [v.source === 'instagram' ? 'Instagram Reel' : (v.source || 'Video')]));
+      kids.push(el('div', { class: 'play' }, [el('span', {}, ['▶'])]));
+      const titleKids = [v.title || 'Video'];
+      if (hasText(v.desc)) titleKids.push(el('span', { class: 'v-desc' }, [String(v.desc).trim()]));
+      const vcard = el('article', {
+        class: 'video-card',
+        'data-admin-edit': v._edit || '',
+        title: 'Ctrl+Alt+Shift + double-click untuk edit'
+      }, [
+        el('div', {
+          class: 'video-thumb',
+          onclick: function (ev) {
+            if (ev.ctrlKey && ev.altKey && ev.shiftKey) return;
+            if (v.youtubeId) openVideo(v.youtubeId);
+            else if (v.embedUrl) openEmbed(v.embedUrl);
+            else if (v.url) window.open(v.url, '_blank', 'noopener');
+          }
+        }, kids),
+        el('h3', {}, titleKids)
+      ]);
+      return vcard;
+    }
+
+    function itemToVideoCard(gg, it, iIdx, gIdx) {
+      const id = it.youtubeId || it.id || '';
+      return {
+        title: (it.title && String(it.title).trim()) || 'Video',
+        desc: it.desc || it.description || '',
+        thumb: it.thumb || (id ? ('https://img.youtube.com/vi/' + id + '/hqdefault.jpg') : ''),
+        youtubeId: id,
+        source: 'youtube',
+        _edit: 'videoGroupItem:' + gIdx + ':' + iIdx
+      };
+    }
+
+    function makeVgSummary(gg, gIdx, gKey) {
+      const items = Array.isArray(gg.items) ? gg.items : [];
+      const first = items[0] ? itemToVideoCard(gg, items[0], 0, gIdx) : null;
+      const groupEl = el('div', {
+        class: 'gallery-group is-collapsed vg-group',
+        'data-vg-key': gKey,
+        'data-admin-edit': 'videoGroups:' + gIdx,
+        title: 'Ctrl+Alt+Shift + double-click untuk edit grup'
+      }, []);
+      const summary = el('button', {
+        type: 'button',
+        class: 'gg-summary vg-summary',
+        title: 'Buka grup ' + (gg.name || ''),
+        onclick: function (ev) {
+          ev.preventDefault();
+          PAGE.videoGroup = adaptiveGalleryGroupPage();
+          _vgOpen[gKey] = true;
+          if (!_vgShown[gKey] || _vgShown[gKey] < PAGE.videoGroup) {
+            _vgShown[gKey] = Math.min(PAGE.videoGroup, items.length);
+          }
+          paint();
+          try {
+            const node = box.querySelector('[data-vg-key="' + CSS.escape(gKey) + '"]');
+            if (node) node.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+          } catch (_) {}
+        }
+      }, []);
+      const thumbWrap = el('div', { class: 'gg-summary-thumb' }, []);
+      if (first && first.thumb) {
+        thumbWrap.appendChild(el('img', { src: first.thumb, alt: first.title || '', loading: 'lazy' }));
+        thumbWrap.appendChild(el('div', { class: 'play vg-play-mini' }, [el('span', {}, ['▶'])]));
+      } else {
+        thumbWrap.appendChild(el('div', { class: 'gallery-placeholder' }, ['Video']));
+      }
+      summary.appendChild(thumbWrap);
+      summary.appendChild(el('div', { class: 'gg-summary-meta' }, [
+        el('div', { class: 'gg-summary-name' }, [gg.name || 'Playlist']),
+        el('div', { class: 'gg-summary-count' }, [String(items.length) + ' video']),
+        el('div', { class: 'gg-summary-hint' }, ['Klik untuk membuka'])
+      ]));
+      summary.appendChild(el('span', { class: 'gg-summary-chevron', 'aria-hidden': 'true' }, ['▸']));
+      groupEl.appendChild(summary);
+      return groupEl;
+    }
+
+    function makeOpenVg(gg, gIdx, gKey) {
+      const items = Array.isArray(gg.items) ? gg.items : [];
+      let order = items.map(function (it, i) { return { it: it, i: i }; });
+      const gSort = (_mediaFilter.videos && _mediaFilter.videos.sort) || 'newest';
+      order.sort(function (a, b) {
+        const ta = String(a.it.title || a.it.youtubeId || '');
+        const tb = String(b.it.title || b.it.youtubeId || '');
+        if (gSort === 'oldest') return ta.localeCompare(tb) || (a.i - b.i);
+        return tb.localeCompare(ta) || (b.i - a.i);
       });
+      if (!_vgShown[gKey] || _vgShown[gKey] < 1) {
+        _vgShown[gKey] = Math.min(PAGE.videoGroup, items.length);
+      }
+      if (_vgShown[gKey] > items.length) _vgShown[gKey] = items.length;
+      const nShow = _vgShown[gKey];
+
+      const groupEl = el('div', {
+        class: 'gallery-group is-open vg-group',
+        'data-vg-key': gKey,
+        'data-admin-edit': 'videoGroups:' + gIdx
+      }, []);
+      const titleRow = el('div', { class: 'gallery-group-head' }, []);
+      titleRow.appendChild(el('h3', { class: 'gallery-group-title' }, [
+        gg.name || 'Playlist',
+        el('span', { class: 'gg-count' }, [String(items.length) + ' video'])
+      ]));
+      titleRow.appendChild(el('button', {
+        type: 'button',
+        class: 'btn btn-ghost gg-fold-btn',
+        onclick: function (ev) {
+          ev.preventDefault();
+          _vgOpen[gKey] = false;
+          paint();
+        }
+      }, ['▴ Lipat grup']));
+      groupEl.appendChild(titleRow);
+
+      const grid = el('div', { class: 'grid-2 vg-open-grid' }, []);
+      order.slice(0, nShow).forEach(function (pair) {
+        const v = itemToVideoCard(gg, pair.it, pair.i, gIdx);
+        const card = makeVideoCard(v);
+        grid.appendChild(card);
+        attachEngagement(card, 'videos', v._edit);
+      });
+      groupEl.appendChild(grid);
+
+      const left = items.length - nShow;
+      if (left > 0) {
+        const moreWrap = el('div', { class: 'load-more-wrap gg-more-wrap' }, []);
+        moreWrap.appendChild(el('button', {
+          type: 'button',
+          class: 'btn btn-ghost load-more-btn',
+          onclick: function (ev) {
+            ev.preventDefault();
+            _vgShown[gKey] = Math.min(nShow + PAGE.videoGroup, items.length);
+            paint();
+          }
+        }, ['Muat lebih banyak (' + left + ' tersisa)']));
+        groupEl.appendChild(moreWrap);
+      }
+      groupEl.appendChild(el('div', { class: 'gg-fold-bottom' }, [
+        el('button', {
+          type: 'button',
+          class: 'btn btn-ghost gg-fold-btn',
+          onclick: function (ev) {
+            ev.preventDefault();
+            _vgOpen[gKey] = false;
+            paint();
+          }
+        }, ['▴ Lipat grup · ' + (gg.name || '')])
+      ]));
+      return groupEl;
+    }
+
+    const paint = function () {
+      PAGE.videoGroup = adaptiveGalleryGroupPage();
+      box.innerHTML = '';
+      box.className = 'gallery-stack';
+
+      let grid = el('div', { class: 'grid-2 gg-mixed-grid' }, []);
+      const flushGrid = function () {
+        if (grid.childNodes.length) {
+          box.appendChild(grid);
+          grid = el('div', { class: 'grid-2 gg-mixed-grid' }, []);
+        }
+      };
+
+      const allSlots = [];
+      list.forEach(function (card) {
+        if (q) {
+          const hay = [card.title, card.desc, card.source, card.youtubeId].join(' ').toLowerCase();
+          if (hay.indexOf(q) === -1) return;
+        }
+        allSlots.push({ kind: 'card', date: card.date || '', _idx: card._idx, card: card });
+      });
+      activeGroups.forEach(function (gg, gIdx) {
+        const items = Array.isArray(gg.items) ? gg.items : [];
+        if (!items.length) return;
+        const gKey = String(gg.id || gg.playlistUrl || gg.name || gIdx);
+        if (q) {
+          const hay = [gg.name, gg.playlistUrl].concat(items.map(function (it) {
+            return (it.title || '') + ' ' + (it.youtubeId || '') + ' ' + (it.desc || '');
+          })).join(' ').toLowerCase();
+          if (hay.indexOf(q) === -1) return;
+        }
+        allSlots.push({
+          kind: 'group',
+          date: gg.date || '',
+          _idx: 200000 + (typeof gg.order === 'number' ? gg.order : gIdx),
+          gg: gg,
+          gIdx: gIdx,
+          gKey: gKey
+        });
+      });
+      const sortDir = ((_mediaFilter.videos && _mediaFilter.videos.sort) === 'oldest') ? 1 : -1;
+      allSlots.sort(function (a, b) {
+        const da = parseItemDate(a);
+        const db = parseItemDate(b);
+        if (da !== db) return (da - db) * sortDir;
+        return ((a._idx || 0) - (b._idx || 0)) * sortDir;
+      });
+
+      _lists.videos = allSlots;
+      if (shown.videos > allSlots.length) shown.videos = allSlots.length;
+      initShown('videos', allSlots.length);
+      const slice = allSlots.slice(0, shown.videos);
+
+      slice.forEach(function (tile) {
+        if (tile.kind === 'card') {
+          const card = makeVideoCard(tile.card);
+          grid.appendChild(card);
+          attachEngagement(card, 'videos', tile.card._edit || ('video-' + Math.random()));
+        } else if (tile.kind === 'group') {
+          if (_vgOpen[tile.gKey]) {
+            flushGrid();
+            box.appendChild(makeOpenVg(tile.gg, tile.gIdx, tile.gKey));
+          } else {
+            grid.appendChild(makeVgSummary(tile.gg, tile.gIdx, tile.gKey));
+          }
+        }
+      });
+      flushGrid();
       updateMoreBtn('videosMoreWrap', 'videos');
     };
+
     bindLoadMore('videosMore', 'videosMoreWrap', 'videos', paint);
     paint();
   }
@@ -2126,7 +2381,7 @@
       else if (type === 'articles') renderArticles(site.articles);
       else if (type === 'gallery' || type === 'galleryGroups' || type === 'galleryGroupFile')
         renderGallery(site.gallery, site.media, site.galleryGroups);
-      else if (type === 'videos') renderVideos(site.videos, site.media);
+      else if (type === 'videos' || type === 'videoGroups' || type === 'videoGroupItem') renderVideos(site.videos, site.media, site.videoGroups);
       else if (type === 'facilities' || type === 'teachers' || type === 'leadership' ||
                type === 'achievements' || type === 'calendar') {
         renderAllOptional(site);
@@ -2240,8 +2495,28 @@
       }
       list = gg.files;
       item = Object.assign({}, list[fileIdx]);
-      // pastikan title default dari nama file jika kosong
       if (!item.title) item.title = titleFromFilename(item.file || item.name || '');
+    } else if (type === 'videoGroupItem') {
+      groupIdx = index;
+      fileIdx = extra;
+      if (!Array.isArray(site.videoGroups) || groupIdx < 0 || groupIdx >= site.videoGroups.length) {
+        window.alert('Grup video tidak ditemukan.');
+        return;
+      }
+      const vg = site.videoGroups[groupIdx];
+      if (!Array.isArray(vg.items) || fileIdx < 0 || fileIdx >= vg.items.length) {
+        window.alert('Video dalam grup tidak ditemukan.');
+        return;
+      }
+      list = vg.items;
+      item = Object.assign({}, list[fileIdx]);
+    } else if (type === 'galleryGroups' || type === 'videoGroups') {
+      list = feGetList(site, type);
+      if (!list || index < 0 || index >= list.length) {
+        window.alert('Grup tidak ditemukan.');
+        return;
+      }
+      item = Object.assign({}, list[index]);
     } else {
       list = feGetList(site, type);
       if (!list || index < 0 || index >= list.length) {
@@ -2368,10 +2643,20 @@
       });
       if (type === 'galleryGroupFile') {
         list[fileIdx] = item;
-        // re-render uses galleryGroups
         await fePersist('✓ Tersimpan. Tampilan diperbarui.', true);
-        // force re-render groups
         try { renderGallery(site.gallery, site.media, site.galleryGroups); } catch (_) {}
+      } else if (type === 'videoGroupItem') {
+        list[fileIdx] = item;
+        await fePersist('✓ Tersimpan. Tampilan diperbarui.', true);
+        try { renderVideos(site.videos, site.media, site.videoGroups); } catch (_) {}
+      } else if (type === 'galleryGroups') {
+        list[index] = item;
+        await fePersist('✓ Tersimpan. Tampilan diperbarui.', true);
+        try { renderGallery(site.gallery, site.media, site.galleryGroups); } catch (_) {}
+      } else if (type === 'videoGroups') {
+        list[index] = item;
+        await fePersist('✓ Tersimpan. Tampilan diperbarui.', true);
+        try { renderVideos(site.videos, site.media, site.videoGroups); } catch (_) {}
       } else {
         list[index] = item;
         await fePersist('✓ Tersimpan. Tampilan diperbarui.', true);
@@ -2399,23 +2684,28 @@
 
     document.getElementById('feEditDelete').onclick = async () => {
       if (!window.confirm('Hapus item ini secara permanen dari website?')) return;
-      if (type === 'galleryGroupFile') {
+      if (type === 'galleryGroupFile' || type === 'videoGroupItem') {
         list.splice(fileIdx, 1);
       } else {
         list.splice(index, 1);
       }
       const ok = await fePersist('✓ Dihapus. Tampilan diperbarui.', true);
-      if (ok && type === 'galleryGroupFile') {
+      if (ok && (type === 'galleryGroupFile' || type === 'galleryGroups')) {
         try { renderGallery(site.gallery, site.media, site.galleryGroups); } catch (_) {}
+      }
+      if (ok && (type === 'videoGroupItem' || type === 'videoGroups')) {
+        try { renderVideos(site.videos, site.media, site.videoGroups); } catch (_) {}
       }
       if (!ok) {
         st.textContent = (st.textContent || '') + ' Refresh halaman jika tampilan tidak sesuai.';
       }
     };
 
-    // Sembunyikan Duplikat untuk item file dalam grup (kurang relevan)
     const dupBtn = document.getElementById('feEditDup');
-    if (dupBtn) dupBtn.style.display = (type === 'galleryGroupFile') ? 'none' : '';
+    if (dupBtn) {
+      const hideDup = (type === 'galleryGroupFile' || type === 'videoGroupItem');
+      dupBtn.style.display = hideDup ? 'none' : '';
+    }
   }
 
   const FE_ADMIN_SESSION_MS = 20 * 60 * 1000; // 20 menit — lalu minta password lagi
@@ -2567,7 +2857,7 @@
       renderPrograms(data.programs);
       renderArticles(data.articles);
       renderGallery(data.gallery, data.media, data.galleryGroups);
-      renderVideos(data.videos, data.media);
+      renderVideos(data.videos, data.media, data.videoGroups);
       renderActivities(data.activities);
       renderAnnouncements(data.announcements);
       renderAllOptional(data);

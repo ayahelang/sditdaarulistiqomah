@@ -33,20 +33,20 @@
       flex-wrap: nowrap;
       align-items: center;
       justify-content: space-between;
-      gap: 12px;
-      padding: .75rem .9rem;
+      gap: 10px;
+      padding: .55rem .7rem;
       background: #f4faf7;
       border-radius: 10px;
-      font-size: .9rem;
-      margin-bottom: .5rem;
+      font-size: .88rem;
+      margin-bottom: .4rem;
     }
     .list-item .li-thumb {
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 4px;
+      gap: 2px;
       flex: 0 0 auto;
-      width: 76px;
+      width: 64px;
     }
     .list-item .li-info {
       flex: 1 1 auto;
@@ -55,33 +55,94 @@
     }
     .list-item .li-info strong {
       display: block;
-      margin-top: 2px;
+      margin-top: 1px;
       word-break: break-word;
+      font-size: .9rem;
+      line-height: 1.3;
     }
-    .list-item .meta { font-size: .78rem; color: var(--muted); margin-top: .15rem; }
+    .list-item .meta {
+      font-size: .72rem;
+      color: var(--muted);
+      margin-top: .1rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 100%;
+    }
     .list-item .actions-row {
       display: flex;
       flex-direction: row;
       flex-wrap: nowrap;
       align-items: center;
-      gap: .4rem;
+      gap: .35rem;
       flex: 0 0 auto;
       margin-left: auto;
+      position: relative;
     }
+    .list-item .actions-inline {
+      display: flex;
+      gap: .35rem;
+      align-items: center;
+    }
+    .list-item .actions-more { display: none; position: relative; }
+    .list-item .btn-more {
+      padding: .35rem .55rem !important;
+      font-size: 1.15rem !important;
+      line-height: 1;
+      min-width: 36px;
+    }
+    .list-item .actions-menu {
+      position: absolute;
+      right: 0;
+      top: calc(100% + 4px);
+      z-index: 40;
+      background: #fff;
+      border: 1px solid rgba(11,110,79,.15);
+      border-radius: 10px;
+      box-shadow: 0 10px 28px rgba(0,0,0,.12);
+      min-width: 140px;
+      padding: .35rem;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .list-item .actions-menu[hidden] { display: none !important; }
+    .list-item .actions-menu-item {
+      border: none;
+      background: transparent;
+      text-align: left;
+      padding: .5rem .7rem;
+      border-radius: 8px;
+      font-size: .85rem;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+      color: #084C37;
+    }
+    .list-item .actions-menu-item:hover { background: #f0f7f3; }
+    .list-item .actions-menu-item.danger { color: #991b1b; }
     .list-item .actions-row .btn {
-      padding: .4rem .75rem;
-      font-size: .8rem;
+      padding: .35rem .65rem;
+      font-size: .78rem;
       white-space: nowrap;
     }
-    @media (max-width: 560px) {
+    /* Mobile: compact + ⋮ menu, hide long path noise */
+    @media (max-width: 640px) {
       .list-item {
-        flex-wrap: wrap;
+        gap: 8px;
+        padding: .5rem .6rem;
       }
-      .list-item .actions-row {
-        width: 100%;
-        justify-content: flex-end;
-        margin-left: 0;
-        margin-top: 4px;
+      .list-item .li-thumb { width: 56px; }
+      .list-item .meta { display: none; } /* path panjang tidak dibutuhkan di mobile */
+      .list-item .actions-inline { display: none; }
+      .list-item .actions-more { display: block; }
+      .list-item .preview-status { font-size: .65rem; }
+      /* Tombol Preview YouTube tetap ada di mobile (satu tombol, tidak boros) */
+      .list-item .li-info .btn {
+        display: inline-block;
+        margin-top: 4px !important;
+        padding: .3rem .55rem !important;
+        font-size: .72rem !important;
       }
     }
     .badge {
@@ -238,14 +299,19 @@
     #detectPreview { margin-top: 14px; }
 
     #previewOverlay {
-      display: none; position: fixed; inset: 0; z-index: 9999;
-      background: rgba(15,23,42,.55); align-items: center; justify-content: center;
-      padding: 20px;
+      display: none; position: fixed; inset: 0; z-index: 100050;
+      background: rgba(15,23,42,.72); align-items: center; justify-content: center;
+      padding: 12px;
     }
     #previewOverlay.open { display: flex; }
     .preview-card {
-      background: #fff; border-radius: 16px; max-width: 560px; width: 100%;
-      box-shadow: 0 24px 64px rgba(0,0,0,.25); overflow: hidden;
+      background: #fff; border-radius: 16px; max-width: min(920px, 96vw); width: 100%;
+      max-height: 92vh; overflow: auto;
+      box-shadow: 0 24px 64px rgba(0,0,0,.35);
+    }
+    .preview-card-body img {
+      width: 100%; height: auto; max-height: 78vh; object-fit: contain;
+      display: block; margin: 0 auto; background: #111; border-radius: 8px;
     }
     .preview-card-head {
       display: flex; justify-content: space-between; align-items: center;
@@ -292,11 +358,11 @@
     .ppdb-modal-grid .full { grid-column:1/-1; }
     .ppdb-count { font-size:.85rem; color:var(--muted); font-weight:600; }
 
-    /* Horizontal tabs */
+    /* Horizontal tabs — scroll kiri-kanan seperti Shopee/Tokped */
     .admin-tabs-bar {
       display: flex;
-      flex-wrap: wrap;
-      gap: .35rem;
+      flex-wrap: nowrap;
+      gap: .3rem;
       padding: .35rem;
       margin: 0 0 1rem;
       background: #fff;
@@ -306,18 +372,23 @@
       position: sticky;
       top: 0;
       z-index: 50;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
     }
+    .admin-tabs-bar::-webkit-scrollbar { display: none; }
     .admin-tab {
       border: none;
       background: transparent;
       color: var(--muted, #5B6575);
       font-weight: 700;
       font-size: .82rem;
-      padding: .55rem .85rem;
+      padding: .5rem .8rem;
       border-radius: 10px;
       cursor: pointer;
       font-family: inherit;
       white-space: nowrap;
+      flex: 0 0 auto;
       transition: background .15s, color .15s;
     }
     .admin-tab:hover { background: #f0f7f3; color: #084C37; }
@@ -333,8 +404,65 @@
       to { opacity: 1; transform: none; }
     }
     @media (max-width: 640px) {
-      .admin-tabs-bar { gap: .25rem; padding: .3rem; }
-      .admin-tab { font-size: .75rem; padding: .45rem .6rem; }
+      .admin-tabs-bar { gap: .2rem; padding: .28rem; margin-bottom: .75rem; }
+      .admin-tab { font-size: .74rem; padding: .42rem .65rem; }
+    }
+
+    /* Toolbar tombol atas — 1 baris + scroll (desktop & mobile) */
+    .admin-toolbar {
+      display: flex;
+      flex-wrap: nowrap;
+      gap: .4rem;
+      margin-top: .55rem;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: thin;
+      padding-bottom: 2px;
+    }
+    .admin-toolbar .btn {
+      flex: 0 0 auto;
+      white-space: nowrap;
+      font-size: .8rem;
+      padding: .42rem .7rem;
+    }
+    .admin-toolbar::-webkit-scrollbar { height: 4px; }
+    .admin-card > .hint { margin-top: .25rem; margin-bottom: 0; }
+    .admin-card h1 { margin-bottom: .2rem; }
+    @media (max-width: 640px) {
+      .admin-toolbar {
+        scrollbar-width: none;
+        margin-top: .4rem;
+      }
+      .admin-toolbar::-webkit-scrollbar { display: none; }
+      .admin-toolbar .btn {
+        font-size: .76rem;
+        padding: .4rem .65rem;
+      }
+      .admin-card { padding: .9rem 1rem; }
+      .admin-card h1 { font-size: 1.15rem; }
+      .admin-wrap { width: min(960px, 96vw); margin: .75rem auto 2rem; }
+      .gg-admin-card { gap: 6px !important; }
+      .gg-admin-preview {
+        grid-template-columns: repeat(auto-fill, minmax(72px, 1fr)) !important;
+        gap: 6px !important;
+      }
+      .gg-admin-card .li-actions {
+        display: flex !important;
+        flex-wrap: nowrap !important;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+        gap: .35rem;
+        width: 100%;
+        margin-top: 4px;
+      }
+      .gg-admin-card .li-actions::-webkit-scrollbar { display: none; }
+      .gg-admin-card .li-actions .btn {
+        flex: 0 0 auto;
+        white-space: nowrap;
+        font-size: .72rem;
+        padding: .35rem .55rem;
+      }
     }
   </style>
   <link rel="stylesheet" href="../css/lock.css">
@@ -366,7 +494,7 @@
   <div class="admin-wrap"><div class="admin-card">
       <h1>Panel Admin</h1>
       <p class="hint">SDIT Daarul Istiqomah — kelola profil, berita, dan media dari link Instagram/Facebook.</p>
-      <div class="actions">
+      <div class="actions admin-toolbar">
         <a class="btn btn-ghost" href="../" data-tip="Kembali ke halaman website publik tanpa menyimpan otomatis. Simpan dulu jika ada perubahan.">← Kembali ke Website</a>
         <button class="btn btn-primary" type="button" id="btnLoad" data-tip="Muat ulang data dari Google Sheets (sumber utama).">Muat Data</button>
         <button class="btn btn-accent" type="button" id="btnSave" data-tip="Simpan SEMUA data website ke Google Sheets. Pengunjung & admin lain akan melihat data yang sama.">Simpan ke Google Sheets</button>
@@ -627,6 +755,29 @@
         <button class="btn btn-primary" type="button" id="btnAddVideo" data-tip="Tambah video YouTube ke section Video. Isi judul, YouTube ID (kode setelah v=), dan URL thumbnail.">+ Tambah Video</button>
       </div>
     </div>
+<div class="admin-card">
+      <h2>Grup Video (Playlist / multi-link)</h2>
+      <p class="hint">
+        Mirip grup galeri foto. Isi <strong>nama grup</strong>, lalu salah satu:
+        (1) URL <strong>playlist YouTube</strong> → deteksi otomatis daftar video, atau
+        (2) tempel <strong>banyak link video</strong> (satu per baris).
+        Judul &amp; deskripsi bisa diedit nanti di admin atau di frontend.
+      </p>
+      <div class="list" id="videoGroupsList"></div>
+      <div style="margin-top:1rem;padding:1rem;border:1px solid rgba(11,110,79,.15);border-radius:12px;background:#f8fbf9">
+        <label>Nama grup</label>
+        <input type="text" id="vgName" placeholder="Contoh: Kajian Rutin / Kegiatan Tahfidz">
+        <label>URL playlist YouTube (opsional)</label>
+        <input type="url" id="vgPlaylist" placeholder="https://www.youtube.com/playlist?list=PLxxxx">
+        <label>Atau daftar link video (satu per baris)</label>
+        <textarea id="vgLinks" rows="5" placeholder="https://www.youtube.com/watch?v=xxxxx&#10;https://youtu.be/yyyyy"></textarea>
+        <div class="actions" style="margin-top:.75rem;display:flex;flex-wrap:wrap;gap:.5rem">
+          <button class="btn btn-ghost" type="button" id="btnVgFetchPlaylist">Deteksi dari playlist</button>
+          <button class="btn btn-primary" type="button" id="btnAddVideoGroup">+ Tambah / Generate Grup Video</button>
+        </div>
+        <p id="vgStatus" class="hint" style="margin-top:.5rem"></p>
+      </div>
+    </div>
 </div><!-- /tab-video -->
 
 <div class="admin-tab-panel" id="tab-galeri" role="tabpanel" data-tab-panel="galeri">
@@ -635,6 +786,20 @@
       <div class="list" id="galleryList"></div>
       <div class="actions">
         <button class="btn btn-primary" type="button" id="btnAddGallery" data-tip="Tambah foto ke galeri dengan URL/path gambar langsung (bukan link post IG). Untuk link IG, gunakan form Tambah Media di atas.">+ Tambah Foto (URL gambar)</button>
+      </div>
+    </div>
+<div class="admin-card">
+      <h2>Grup Galeri Foto (bulk dari folder)</h2>
+      <p class="hint">
+        Bulk upload mirip Grup Video. Isi <strong>nama grup</strong> dan <strong>path folder</strong>
+        (contoh: <code>images/foto/mabit</code>) tempat file gambar berada di repo.
+        Klik <strong>Scan Folder</strong> → sistem deteksi file via GitHub API.
+        Judul default = nama file; deskripsi default = nama grup + judul foto.
+        Hasil tampil di frontend saat card grup diklik. Edit per-foto lewat tombol Edit File.
+      </p>
+      <div class="list" id="galleryGroupList"></div>
+      <div class="actions">
+        <button class="btn btn-primary" type="button" id="btnAddGalleryGroup" data-tip="Tambah grup galeri foto baru. Setelah isi folder, gunakan Scan Folder.">+ Tambah Grup Galeri Foto</button>
       </div>
     </div>
 </div><!-- /tab-galeri -->

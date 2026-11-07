@@ -273,3 +273,9 @@ Selain `ADMIN_PASSWORD`, panel admin (tab **Setup**) bisa menambah password edit
   (`Ctrl+Alt+Shift` + double-click).
 - Setelah update `Code.gs`, **Deploy → Manage deployments → Edit → New version → Deploy**.
 - Jangan taruh password di GitHub / `config.js`.
+
+
+## Grup video (playlist YouTube)
+
+Action Apps Script `fetchYtPlaylist` membaca feed publik playlist (tanpa API key).
+Setelah update Code.gs, deploy ulang Web App (New version).

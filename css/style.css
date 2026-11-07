@@ -1570,9 +1570,48 @@ body.admin-edit-armed [data-admin-edit]:hover {
 .gg-collapsed-grid .gg-summary {
   position: relative;
 }
+.media-toolbar {
+  margin-bottom: .75rem;
+}
+.media-toolbar-search input {
+  min-height: 0;
+}
+/* Empty state: jangan bikin kotak tinggi */
+#gallery:empty,
+#videos:empty {
+  min-height: 0 !important;
+  height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
 @media (max-width: 900px) {
-  .media-toolbar { flex-direction: column; align-items: stretch; }
-  .media-toolbar-sort { align-self: flex-start; }
+  .media-toolbar {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: .45rem .5rem;
+    margin: 0 0 .65rem;
+  }
+  .media-toolbar-search {
+    flex: 1 1 100%;
+    min-width: 0;
+  }
+  .media-toolbar-sort {
+    align-self: flex-start;
+    flex: 0 0 auto;
+  }
+  #gallery, #videos, .gallery-grid, .video-grid, .grid-2 {
+    min-height: 0 !important;
+  }
+  /* kurangi jarak section head → toolbar → konten */
+  #galeri .section-head,
+  #video .section-head {
+    margin-bottom: .75rem;
+  }
+  #galeri .section-head p,
+  #video .section-head p {
+    margin-bottom: 0;
+  }
 }
 
 /* Campuran card + grup tertutup: satu grid 3 kolom */
@@ -1628,3 +1667,22 @@ body.admin-edit-armed [data-admin-edit]:hover {
   width: 100%;
   margin-top: 1.5rem;
 }
+
+
+/* Video group opener — keep desktop video card density (grid-2) */
+.vg-group .gg-summary-thumb { position: relative; }
+.vg-play-mini {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  pointer-events: none;
+}
+.vg-play-mini span {
+  width: 36px; height: 36px; border-radius: 50%;
+  background: rgba(11,110,79,.85); color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-size: .85rem;
+}
+.video-card h3 .v-desc {
+  display: block; font-size: .8rem; font-weight: 500; color: var(--muted, #5B6575);
+  margin-top: .25rem; line-height: 1.35;
+}
+.vg-open-grid { margin-top: .75rem; }
