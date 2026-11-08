@@ -1,1 +1,9 @@
-Produksi: grup kecil 1-3 per baris + sort bersama card biasa
+SDIT Daarul Istiqomah — Website (produksi)
+Domain: sditdaarulistiqomah.sch.id
+
+Struktur:
+  index.html, CNAME, robots.txt, sitemap.xml, *.txt  → root
+  js/   css/   admin/   apps-script/   data/   images/   docs/
+
+Admin: /admin/
+Docs: docs/

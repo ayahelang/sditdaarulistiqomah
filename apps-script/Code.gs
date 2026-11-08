@@ -57,6 +57,13 @@ function handleRequest(e, method) {
     if (action === 'fetchYtPlaylist') {
       return json_(fetchYtPlaylist_(body.url || body.playlistUrl || (e.parameter && e.parameter.url) || ''));
     }
+    if (action === 'listDriveFolderVideos') {
+      return json_(listDriveFolderVideos_(
+        body.url || body.folderUrl || (e.parameter && e.parameter.url) || '',
+        body.pageToken || (e.parameter && e.parameter.pageToken) || '',
+        body.pageSize || (e.parameter && e.parameter.pageSize) || 20
+      ));
+    }
     if (action === 'listEditors') {
       return json_(listEditors_());
     }
@@ -827,4 +834,91 @@ function parseYtAtomFeed_(xml) {
     });
   }
   return items;
+}
+
+
+/** Ambil daftar file video dari folder Google Drive (berhalaman, pageSize kecil agar tidak timeout). */
+function listDriveFolderVideos_(folderUrl, pageToken, pageSize) {
+  var folderId = extractDriveFolderId_(folderUrl);
+  if (!folderId) {
+    return { ok: false, error: 'URL folder Google Drive tidak valid. Contoh: https://drive.google.com/drive/folders/XXXX' };
+  }
+  var size = parseInt(pageSize, 10) || 20;
+  if (size < 5) size = 5;
+  if (size > 40) size = 40;
+
+  // Pastikan scope Drive terpicu (readonly)
+  try { DriveApp.getRootFolder().getName(); } catch (e0) {}
+
+  var q = "'" + folderId + "' in parents and trashed = false and mimeType contains 'video/'";
+  var api = 'https://www.googleapis.com/drive/v3/files'
+    + '?q=' + encodeURIComponent(q)
+    + '&fields=' + encodeURIComponent('nextPageToken,files(id,name,mimeType,thumbnailLink,webViewLink,modifiedTime)')
+    + '&pageSize=' + size
+    + '&orderBy=name'
+    + '&supportsAllDrives=true'
+    + '&includeItemsFromAllDrives=true';
+  if (pageToken) api += '&pageToken=' + encodeURIComponent(pageToken);
+
+  try {
+    var resp = UrlFetchApp.fetch(api, {
+      method: 'get',
+      headers: { Authorization: 'Bearer ' + ScriptApp.getOAuthToken() },
+      muteHttpExceptions: true,
+      followRedirects: true
+    });
+    var code = resp.getResponseCode();
+    var raw = resp.getContentText() || '';
+    if (code >= 400) {
+      var errMsg = 'Gagal baca folder Drive (HTTP ' + code + ').';
+      try {
+        var ej = JSON.parse(raw);
+        if (ej.error && ej.error.message) errMsg += ' ' + ej.error.message;
+      } catch (e1) {}
+      errMsg += ' Pastikan folder dibagikan ke akun yang menjalankan Apps Script (atau Anyone with link) dan scope Drive diizinkan.';
+      return { ok: false, error: errMsg, http: code };
+    }
+    var data = JSON.parse(raw);
+    var files = data.files || [];
+    var items = [];
+    for (var i = 0; i < files.length; i++) {
+      var f = files[i];
+      if (!f || !f.id) continue;
+      var title = String(f.name || 'Video').replace(/\.[^.]+$/, '');
+      items.push({
+        source: 'drive',
+        driveFileId: f.id,
+        youtubeId: '',
+        title: title,
+        desc: '',
+        fileName: f.name || '',
+        mimeType: f.mimeType || '',
+        thumb: 'https://drive.google.com/thumbnail?id=' + f.id + '&sz=w640',
+        embedUrl: 'https://drive.google.com/file/d/' + f.id + '/preview',
+        url: 'https://drive.google.com/file/d/' + f.id + '/view',
+        date: (f.modifiedTime || '').slice(0, 10)
+      });
+    }
+    return {
+      ok: true,
+      folderId: folderId,
+      count: items.length,
+      items: items,
+      nextPageToken: data.nextPageToken || '',
+      done: !data.nextPageToken
+    };
+  } catch (err) {
+    return { ok: false, error: String(err.message || err) };
+  }
+}
+
+function extractDriveFolderId_(url) {
+  var s = String(url || '').trim();
+  if (!s) return '';
+  var m = s.match(/\/folders\/([a-zA-Z0-9_-]+)/);
+  if (m) return m[1];
+  m = s.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+  if (m) return m[1];
+  if (/^[a-zA-Z0-9_-]{10,}$/.test(s)) return s;
+  return '';
 }

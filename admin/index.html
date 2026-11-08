@@ -759,9 +759,10 @@
       <h2>Grup Video (Playlist / multi-link)</h2>
       <p class="hint">
         Mirip grup galeri foto. Isi <strong>nama grup</strong>, lalu salah satu:
-        (1) URL <strong>playlist YouTube</strong> → deteksi otomatis daftar video, atau
-        (2) tempel <strong>banyak link video</strong> (satu per baris).
-        Judul &amp; deskripsi bisa diedit nanti di admin atau di frontend.
+        (1) URL <strong>playlist YouTube</strong>,
+        (2) URL <strong>folder Google Drive</strong> (file video di dalamnya), atau
+        (3) tempel <strong>banyak link YouTube</strong> (satu per baris).
+        Deteksi Drive mengambil file <strong>sedikit-sedikit</strong> (batch) hingga selesai agar tidak timeout.
       </p>
       <div class="list" id="videoGroupsList"></div>
       <div style="margin-top:1rem;padding:1rem;border:1px solid rgba(11,110,79,.15);border-radius:12px;background:#f8fbf9">
@@ -769,10 +770,13 @@
         <input type="text" id="vgName" placeholder="Contoh: Kajian Rutin / Kegiatan Tahfidz">
         <label>URL playlist YouTube (opsional)</label>
         <input type="url" id="vgPlaylist" placeholder="https://www.youtube.com/playlist?list=PLxxxx">
-        <label>Atau daftar link video (satu per baris)</label>
-        <textarea id="vgLinks" rows="5" placeholder="https://www.youtube.com/watch?v=xxxxx&#10;https://youtu.be/yyyyy"></textarea>
+        <label>URL folder Google Drive (opsional)</label>
+        <input type="url" id="vgDriveFolder" placeholder="https://drive.google.com/drive/folders/XXXX">
+        <label>Atau daftar link video YouTube (satu per baris)</label>
+        <textarea id="vgLinks" rows="4" placeholder="https://www.youtube.com/watch?v=xxxxx&#10;https://youtu.be/yyyyy"></textarea>
         <div class="actions" style="margin-top:.75rem;display:flex;flex-wrap:wrap;gap:.5rem">
-          <button class="btn btn-ghost" type="button" id="btnVgFetchPlaylist">Deteksi dari playlist</button>
+          <button class="btn btn-ghost" type="button" id="btnVgFetchPlaylist">Deteksi dari playlist YT</button>
+          <button class="btn btn-ghost" type="button" id="btnVgFetchDrive">Deteksi dari Google Drive</button>
           <button class="btn btn-primary" type="button" id="btnAddVideoGroup">+ Tambah / Generate Grup Video</button>
         </div>
         <p id="vgStatus" class="hint" style="margin-top:.5rem"></p>

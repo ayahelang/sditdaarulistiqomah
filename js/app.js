@@ -918,13 +918,20 @@
     }
 
     function itemToVideoCard(gg, it, iIdx, gIdx) {
-      const id = it.youtubeId || it.id || '';
+      const id = it.youtubeId || '';
+      const driveId = it.driveFileId || '';
+      const isDrive = it.source === 'drive' || !!driveId;
+      const thumb = it.thumb
+        || (id ? ('https://img.youtube.com/vi/' + id + '/hqdefault.jpg') : '')
+        || (driveId ? ('https://drive.google.com/thumbnail?id=' + driveId + '&sz=w640') : '');
       return {
         title: (it.title && String(it.title).trim()) || 'Video',
         desc: it.desc || it.description || '',
-        thumb: it.thumb || (id ? ('https://img.youtube.com/vi/' + id + '/hqdefault.jpg') : ''),
+        thumb: thumb,
         youtubeId: id,
-        source: 'youtube',
+        embedUrl: it.embedUrl || (driveId ? ('https://drive.google.com/file/d/' + driveId + '/preview') : ''),
+        url: it.url || (driveId ? ('https://drive.google.com/file/d/' + driveId + '/view') : ''),
+        source: isDrive ? 'drive' : (it.source || 'youtube'),
         _edit: 'videoGroupItem:' + gIdx + ':' + iIdx
       };
     }

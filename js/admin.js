@@ -2571,7 +2571,57 @@
     return r.json();
   }
 
-  const btnVgFetch = $('btnVgFetchPlaylist');
+  
+  async function apiFetchDriveFolderVideos(folderUrl, pageToken) {
+    const cfg = window.SDIT_CONFIG || {};
+    const base = (cfg.sheetsApiUrl || '').replace(/\?.*$/, '');
+    const token = cfg.apiToken || '';
+    if (!base) throw new Error('sheetsApiUrl belum diisi di js/config.js');
+    const res = await fetch(base, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'listDriveFolderVideos',
+        token: token,
+        url: folderUrl,
+        folderUrl: folderUrl,
+        pageToken: pageToken || '',
+        pageSize: 20
+      })
+    });
+    const json = await res.json();
+    if (!json || json.ok === false) throw new Error((json && json.error) || 'Gagal list folder Drive');
+    return json;
+  }
+
+  /** Ambil semua video di folder Drive, batch demi batch hingga nextPageToken habis. */
+  async function fetchAllDriveFolderVideos(folderUrl, onProgress) {
+    var all = [];
+    var pageToken = '';
+    var page = 0;
+    do {
+      page++;
+      var res = await apiFetchDriveFolderVideos(folderUrl, pageToken);
+      var batch = Array.isArray(res.items) ? res.items : [];
+      all = all.concat(batch);
+      if (typeof onProgress === 'function') {
+        onProgress({
+          page: page,
+          batch: batch.length,
+          total: all.length,
+          done: !!res.done || !res.nextPageToken
+        });
+      }
+      pageToken = res.nextPageToken || '';
+      // jeda singkat agar tidak membanjiri Apps Script
+      if (pageToken) {
+        await new Promise(function (r) { setTimeout(r, 350); });
+      }
+    } while (pageToken);
+    return all;
+  }
+
+const btnVgFetch = $('btnVgFetchPlaylist');
   if (btnVgFetch) {
     btnVgFetch.onclick = async function () {
       const url = (($('vgPlaylist') && $('vgPlaylist').value) || '').trim();
@@ -2592,6 +2642,34 @@
         if (st) st.textContent = '✓ ' + items.length + ' video terdeteksi. Klik Tambah Grup untuk menyimpan.';
       } catch (err) {
         if (st) st.textContent = '✗ ' + (err.message || err);
+      }
+    };
+  }
+
+  const btnVgDrive = $('btnVgFetchDrive');
+  if (btnVgDrive) {
+    btnVgDrive.onclick = async function () {
+      const url = (($('vgDriveFolder') && $('vgDriveFolder').value) || '').trim();
+      const st = $('vgStatus');
+      if (!url) { if (st) st.textContent = 'Isi URL folder Google Drive dulu.'; return; }
+      if (st) st.textContent = 'Memindai folder Drive (batch 20 file)…';
+      btnVgDrive.disabled = true;
+      try {
+        const items = await fetchAllDriveFolderVideos(url, function (p) {
+          if (st) {
+            st.textContent = 'Drive batch ke-' + p.page + ': +' + p.batch + ' file (total ' + p.total + ')' +
+              (p.done ? ' — selesai.' : ' — lanjut…');
+          }
+        });
+        if (!items.length) throw new Error('Tidak ada file video di folder (atau folder tidak bisa diakses).');
+        window.__vgFetchedItems = items;
+        if (st) st.textContent = '✓ ' + items.length + ' video Drive terdeteksi. Klik + Tambah / Generate Grup Video, lalu Simpan ke Sheets.';
+        status('Drive: ' + items.length + ' video');
+      } catch (err) {
+        if (st) st.textContent = '✗ ' + (err.message || err);
+        status('✗ Deteksi Drive gagal: ' + (err.message || err));
+      } finally {
+        btnVgDrive.disabled = false;
       }
     };
   }
@@ -2633,10 +2711,12 @@
         return;
       }
       if (!Array.isArray(data.videoGroups)) data.videoGroups = [];
+      const driveFolder = (($('vgDriveFolder') && $('vgDriveFolder').value) || '').trim();
       data.videoGroups.unshift({
         id: 'vg' + Date.now(),
         name: name,
         playlistUrl: playlist,
+        driveFolderUrl: driveFolder,
         date: new Date().toISOString().slice(0, 10),
         order: 0,
         active: true,
@@ -2648,6 +2728,7 @@
       if (db) { db.hidden = false; db.style.display = 'block'; }
       if ($('vgName')) $('vgName').value = '';
       if ($('vgPlaylist')) $('vgPlaylist').value = '';
+      if ($('vgDriveFolder')) $('vgDriveFolder').value = '';
       if ($('vgLinks')) $('vgLinks').value = '';
       try { renderVideoGroupsAdmin(); } catch (_) {}
       try { renderLists(); } catch (_) {}
