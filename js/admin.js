@@ -1564,14 +1564,15 @@
       const fac = (data.facilities || []).length;
       const tea = (data.teachers || []).length;
       const ach = (data.achievements || []).length;
+      const vg = (data.videoGroups || []).length;
+      const gg = (data.galleryGroups || []).length;
       status('✓ Tersimpan ke Google Sheets · ' + (j.updatedAt || '') +
         ' · media:' + (cnt.media || 0) +
-        ' carousel:' + (cnt.carousel || 0) +
         ' artikel:' + (cnt.articles || 0) +
+        ' grupFoto:' + (cnt.galleryGroups != null ? cnt.galleryGroups : gg) +
+        ' grupVideo:' + (cnt.videoGroups != null ? cnt.videoGroups : vg) +
         ' fasilitas:' + fac +
-        ' guru:' + tea +
-        ' prestasi:' + ach +
-        ' — buka website publik (hard refresh) untuk melihat.');
+        ' — buka website publik (hard refresh).');
     } catch (e) {
       status('✗ Gagal simpan ke Sheets: ' + e.message);
     }
@@ -2572,25 +2573,69 @@
   }
 
   
+
+  function sortVideoItemsChrono(items) {
+    function keyOf(it) {
+      var name = String(it.fileName || it.title || it.name || '');
+      var m = name.match(/(20\d{6})[_-]?(\d{4,8})/);
+      if (m) return 't' + m[1] + m[2];
+      var nums = name.match(/\d+/g);
+      if (nums && nums.length) {
+        return 'n' + nums.map(function (n) { return ('0000000000' + n).slice(-10); }).join('');
+      }
+      return 'd' + String(it.date || it.modifiedTime || '') + '\0' + name.toLowerCase();
+    }
+    return (items || []).slice().sort(function (a, b) {
+      var ka = keyOf(a), kb = keyOf(b);
+      if (ka < kb) return -1;
+      if (ka > kb) return 1;
+      return 0;
+    });
+  }
+  function applyGroupVideoTitles(items, groupName) {
+    var gname = String(groupName || 'Video').trim() || 'Video';
+    var sorted = sortVideoItemsChrono(items);
+    sorted.forEach(function (it, i) {
+      it.title = gname + ' - Video ' + (i + 1);
+    });
+    return sorted;
+  }
+
   async function apiFetchDriveFolderVideos(folderUrl, pageToken) {
     const cfg = window.SDIT_CONFIG || {};
     const base = (cfg.sheetsApiUrl || '').replace(/\?.*$/, '');
-    const token = cfg.apiToken || '';
+    // Token dari sesi login admin (bukan config.js)
+    const token = (typeof getToken === 'function' ? getToken() : '')
+      || sessionStorage.getItem('sdit_di_admin_token_v1') || '';
     if (!base) throw new Error('sheetsApiUrl belum diisi di js/config.js');
-    const res = await fetch(base, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        action: 'listDriveFolderVideos',
-        token: token,
-        url: folderUrl,
-        folderUrl: folderUrl,
-        pageToken: pageToken || '',
-        pageSize: 20
-      })
-    });
-    const json = await res.json();
-    if (!json || json.ok === false) throw new Error((json && json.error) || 'Gagal list folder Drive');
+    if (!token) throw new Error('Sesi admin habis / belum login. Login dulu di panel admin, lalu coba lagi.');
+    // text/plain menghindari CORS preflight (sama seperti saveSite / fetchYtPlaylist)
+    var res;
+    try {
+      res = await fetch(base, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({
+          action: 'listDriveFolderVideos',
+          token: token,
+          url: folderUrl,
+          folderUrl: folderUrl,
+          pageToken: pageToken || '',
+          pageSize: 20
+        })
+      });
+    } catch (netErr) {
+      throw new Error('Gagal menghubungi Apps Script (Failed to fetch). Cek koneksi, pastikan Code.gs sudah di-deploy ulang (New version), dan Web App: Execute as Me + Who has access Anyone.');
+    }
+    var json;
+    try {
+      json = await res.json();
+    } catch (_e) {
+      throw new Error('Respons Apps Script bukan JSON (HTTP ' + res.status + '). Redeploy Code.gs.');
+    }
+    if (!json || json.ok === false) {
+      throw new Error((json && json.error) || 'Gagal list folder Drive');
+    }
     return json;
   }
 
@@ -2655,16 +2700,17 @@ const btnVgFetch = $('btnVgFetchPlaylist');
       if (st) st.textContent = 'Memindai folder Drive (batch 20 file)…';
       btnVgDrive.disabled = true;
       try {
-        const items = await fetchAllDriveFolderVideos(url, function (p) {
+        var items = await fetchAllDriveFolderVideos(url, function (p) {
           if (st) {
             st.textContent = 'Drive batch ke-' + p.page + ': +' + p.batch + ' file (total ' + p.total + ')' +
               (p.done ? ' — selesai.' : ' — lanjut…');
           }
         });
         if (!items.length) throw new Error('Tidak ada file video di folder (atau folder tidak bisa diakses).');
+        items = sortVideoItemsChrono(items);
         window.__vgFetchedItems = items;
-        if (st) st.textContent = '✓ ' + items.length + ' video Drive terdeteksi. Klik + Tambah / Generate Grup Video, lalu Simpan ke Sheets.';
-        status('Drive: ' + items.length + ' video');
+        if (st) st.textContent = '✓ ' + items.length + ' video Drive terdeteksi & diurutkan. Isi nama grup, lalu + Tambah. Judul otomatis: "Nama Grup - Video 1" dst.';
+        status('Drive: ' + items.length + ' video (terurut)');
       } catch (err) {
         if (st) st.textContent = '✗ ' + (err.message || err);
         status('✗ Deteksi Drive gagal: ' + (err.message || err));
@@ -2712,6 +2758,22 @@ const btnVgFetch = $('btnVgFetchPlaylist');
       }
       if (!Array.isArray(data.videoGroups)) data.videoGroups = [];
       const driveFolder = (($('vgDriveFolder') && $('vgDriveFolder').value) || '').trim();
+      items = applyGroupVideoTitles(items, name);
+      // Rapikan field item agar JSON tidak membengkak (batas Sheets)
+      items = items.map(function (it) {
+        return {
+          source: it.source || (it.driveFileId ? 'drive' : 'youtube'),
+          driveFileId: it.driveFileId || '',
+          youtubeId: it.youtubeId || '',
+          title: it.title || '',
+          desc: it.desc || '',
+          fileName: it.fileName || '',
+          thumb: it.thumb || '',
+          embedUrl: it.embedUrl || '',
+          url: it.url || '',
+          date: it.date || ''
+        };
+      });
       data.videoGroups.unshift({
         id: 'vg' + Date.now(),
         name: name,

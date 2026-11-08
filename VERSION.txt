@@ -1,2 +1,1 @@
-SDIT_PRODUCTION=1
-BASED_ON_TRIAL=2026-11-07
+PRODUCTION — sditdaarulistiqomah.sch.id

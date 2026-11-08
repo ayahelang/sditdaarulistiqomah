@@ -138,27 +138,130 @@ function handleRequest(e, method) {
 
 function getSite_() {
   var cache = CacheService.getScriptCache();
-  var cached = cache.get('site_json');
-  if (cached) {
-    try { return JSON.parse(cached); } catch (e) {}
+  var map = readSiteKeyMap_();
+  if (!map.site) {
+    var cached = cache.get('site_json');
+    if (cached) {
+      try { return JSON.parse(cached); } catch (e) {}
+    }
+    return null;
   }
+  var data;
+  try {
+    data = JSON.parse(String(map.site));
+  } catch (e) {
+    return null;
+  }
+  // Merge satellite keys (hindari batas ~50k karakter / sel Sheets)
+  var gg = parseJsonKey_(map, 'galleryGroups', data.galleryGroups);
+  var vg = parseJsonKey_(map, 'videoGroups', data.videoGroups);
+  var ggChunks = readJsonChunks_(map, 'galleryGroups');
+  var vgChunks = readJsonChunks_(map, 'videoGroups');
+  if (ggChunks && ggChunks.length) gg = ggChunks;
+  if (vgChunks && vgChunks.length) vg = vgChunks;
+  data.galleryGroups = Array.isArray(gg) ? gg : [];
+  data.videoGroups = Array.isArray(vg) ? vg : [];
 
+  try {
+    cache.put('site_json', JSON.stringify(data), CACHE_SECONDS);
+  } catch (e2) {}
+  return data;
+}
+
+function readSiteKeyMap_() {
+  var sheet = getSheet_(SHEET_SITE);
+  ensureSiteHeaders_(sheet);
+  var values = sheet.getDataRange().getValues();
+  var map = {};
+  for (var i = 1; i < values.length; i++) {
+    var k = String(values[i][0] || '');
+    if (!k) continue;
+    map[k] = values[i][1];
+  }
+  return map;
+}
+
+function parseJsonKey_(map, key, fallback) {
+  if (map[key] == null || map[key] === '') {
+    return Array.isArray(fallback) ? fallback : [];
+  }
+  try {
+    return JSON.parse(String(map[key]));
+  } catch (e) {
+    return Array.isArray(fallback) ? fallback : [];
+  }
+}
+
+function readJsonChunks_(map, baseKey) {
+  var parts = [];
+  var i = 0;
+  while (map[baseKey + '__' + i] != null && String(map[baseKey + '__' + i]) !== '') {
+    try {
+      var arr = JSON.parse(String(map[baseKey + '__' + i]));
+      if (Array.isArray(arr)) parts = parts.concat(arr);
+    } catch (e) {}
+    i++;
+    if (i > 50) break;
+  }
+  return parts;
+}
+
+function upsertSiteKey_(key, value, now) {
   var sheet = getSheet_(SHEET_SITE);
   ensureSiteHeaders_(sheet);
   var values = sheet.getDataRange().getValues();
   for (var i = 1; i < values.length; i++) {
-    if (String(values[i][0]) === 'site' && values[i][1]) {
-      try {
-        var data = JSON.parse(String(values[i][1]));
-        cache.put('site_json', JSON.stringify(data), CACHE_SECONDS);
-        return data;
-      } catch (e) {
-        return null;
-      }
+    if (String(values[i][0]) === key) {
+      sheet.getRange(i + 1, 2).setValue(value);
+      sheet.getRange(i + 1, 3).setValue(now);
+      return;
     }
   }
-  return null;
+  sheet.appendRow([key, value, now]);
 }
+
+function clearSiteKeyPrefix_(prefix) {
+  var sheet = getSheet_(SHEET_SITE);
+  var values = sheet.getDataRange().getValues();
+  for (var i = values.length - 1; i >= 1; i--) {
+    var k = String(values[i][0] || '');
+    if (k === prefix || k.indexOf(prefix + '__') === 0) {
+      sheet.deleteRow(i + 1);
+    }
+  }
+}
+
+function saveLargeArrayKey_(baseKey, arr, now) {
+  arr = Array.isArray(arr) ? arr : [];
+  var full = JSON.stringify(arr);
+  var LIMIT = 45000;
+  clearSiteKeyPrefix_(baseKey);
+  if (full.length <= LIMIT) {
+    upsertSiteKey_(baseKey, full, now);
+    return { chunks: 1, chars: full.length };
+  }
+  var chunk = [];
+  var chunkIdx = 0;
+  var chunkLen = 2;
+  for (var i = 0; i < arr.length; i++) {
+    var piece = JSON.stringify(arr[i]);
+    var add = piece.length + (chunk.length ? 1 : 0);
+    if (chunk.length && chunkLen + add > LIMIT) {
+      upsertSiteKey_(baseKey + '__' + chunkIdx, JSON.stringify(chunk), now);
+      chunkIdx++;
+      chunk = [];
+      chunkLen = 2;
+    }
+    chunk.push(arr[i]);
+    chunkLen += add;
+  }
+  if (chunk.length) {
+    upsertSiteKey_(baseKey + '__' + chunkIdx, JSON.stringify(chunk), now);
+    chunkIdx++;
+  }
+  return { chunks: chunkIdx, chars: full.length };
+}
+
 
 function saveSite_(data) {
   if (!data || typeof data !== 'object') {
@@ -178,24 +281,33 @@ function saveSite_(data) {
   if (!data.visionMission) data.visionMission = { vision: '', mission: [], motto: '' };
   if (!data.fees) data.fees = { enabled: false, title: '', note: '', items: [] };
   if (!data.complaint) data.complaint = { enabled: false };
+  if (!Array.isArray(data.galleryGroups)) data.galleryGroups = [];
+  if (!Array.isArray(data.videoGroups)) data.videoGroups = [];
 
-  var sheet = getSheet_(SHEET_SITE);
-  ensureSiteHeaders_(sheet);
-  var values = sheet.getDataRange().getValues();
-  var jsonStr = JSON.stringify(data);
   var now = new Date().toISOString();
-  var found = false;
-  for (var i = 1; i < values.length; i++) {
-    if (String(values[i][0]) === 'site') {
-      sheet.getRange(i + 1, 2).setValue(jsonStr);
-      sheet.getRange(i + 1, 3).setValue(now);
-      found = true;
-      break;
-    }
+  var galleryGroups = data.galleryGroups || [];
+  var videoGroups = data.videoGroups || [];
+
+  // site inti tanpa grup besar
+  var main = {};
+  for (var k in data) {
+    if (!Object.prototype.hasOwnProperty.call(data, k)) continue;
+    if (k === 'galleryGroups' || k === 'videoGroups') continue;
+    main[k] = data[k];
   }
-  if (!found) {
-    sheet.appendRow(['site', jsonStr, now]);
+  main.galleryGroups = [];
+  main.videoGroups = [];
+
+  var jsonStr = JSON.stringify(main);
+  if (jsonStr.length > 49000) {
+    return {
+      ok: false,
+      error: 'Data site inti terlalu besar (' + jsonStr.length + ' karakter). Kurangi konten lain.'
+    };
   }
+  upsertSiteKey_('site', jsonStr, now);
+  var ggMeta = saveLargeArrayKey_('galleryGroups', galleryGroups, now);
+  var vgMeta = saveLargeArrayKey_('videoGroups', videoGroups, now);
 
   try { syncMediaSheet_(data.media || []); } catch (e) {}
 
@@ -211,15 +323,23 @@ function saveSite_(data) {
       articles: (data.articles || []).length,
       gallery: (data.gallery || []).length,
       videos: (data.videos || []).length,
+      galleryGroups: galleryGroups.length,
+      videoGroups: videoGroups.length,
       facilities: (data.facilities || []).length,
       teachers: (data.teachers || []).length,
       achievements: (data.achievements || []).length,
       leadership: (data.leadership || []).length,
       calendar: (data.calendar || []).length,
       faq: (data.faq || []).length
+    },
+    storage: {
+      siteChars: jsonStr.length,
+      galleryGroups: ggMeta,
+      videoGroups: vgMeta
     }
   };
 }
+
 
 function ensureSiteHeaders_(sheet) {
   if (sheet.getLastRow() === 0) {
@@ -855,7 +975,7 @@ function listDriveFolderVideos_(folderUrl, pageToken, pageSize) {
     + '?q=' + encodeURIComponent(q)
     + '&fields=' + encodeURIComponent('nextPageToken,files(id,name,mimeType,thumbnailLink,webViewLink,modifiedTime)')
     + '&pageSize=' + size
-    + '&orderBy=name'
+    + '&orderBy=modifiedTime'
     + '&supportsAllDrives=true'
     + '&includeItemsFromAllDrives=true';
   if (pageToken) api += '&pageToken=' + encodeURIComponent(pageToken);

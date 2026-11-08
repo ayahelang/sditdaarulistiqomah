@@ -938,16 +938,21 @@
 
     function makeVgSummary(gg, gIdx, gKey) {
       const items = Array.isArray(gg.items) ? gg.items : [];
-      const first = items[0] ? itemToVideoCard(gg, items[0], 0, gIdx) : null;
+      var coverIdx = parseInt(gg.coverIndex, 10);
+      if (Number.isNaN(coverIdx) || coverIdx < 0) coverIdx = 0;
+      if (coverIdx >= items.length) coverIdx = 0;
+      const cover = items[coverIdx] || items[0] || null;
+      const coverCard = cover ? itemToVideoCard(gg, cover, coverIdx, gIdx) : null;
       const groupEl = el('div', {
         class: 'gallery-group is-collapsed vg-group',
         'data-vg-key': gKey,
         'data-admin-edit': 'videoGroups:' + gIdx,
-        title: 'Ctrl+Alt+Shift + double-click untuk edit grup'
+        title: 'Ctrl+Alt+Shift + double-click untuk edit grup (termasuk pilih thumbnail)'
       }, []);
+      // Bentuk sama seperti video-card: thumb 16:9 + judul di bawah
       const summary = el('button', {
         type: 'button',
-        class: 'gg-summary vg-summary',
+        class: 'video-card vg-summary-card',
         title: 'Buka grup ' + (gg.name || ''),
         onclick: function (ev) {
           ev.preventDefault();
@@ -963,20 +968,19 @@
           } catch (_) {}
         }
       }, []);
-      const thumbWrap = el('div', { class: 'gg-summary-thumb' }, []);
-      if (first && first.thumb) {
-        thumbWrap.appendChild(el('img', { src: first.thumb, alt: first.title || '', loading: 'lazy' }));
-        thumbWrap.appendChild(el('div', { class: 'play vg-play-mini' }, [el('span', {}, ['▶'])]));
+      const thumbWrap = el('div', { class: 'video-thumb vg-summary-thumb' }, []);
+      if (coverCard && coverCard.thumb) {
+        thumbWrap.appendChild(el('img', { src: coverCard.thumb, alt: coverCard.title || '', loading: 'lazy' }));
       } else {
-        thumbWrap.appendChild(el('div', { class: 'gallery-placeholder' }, ['Video']));
+        thumbWrap.appendChild(el('div', { class: 'video-placeholder' }, ['Video']));
       }
+      thumbWrap.appendChild(el('div', { class: 'play' }, [el('span', {}, ['▶'])]));
       summary.appendChild(thumbWrap);
-      summary.appendChild(el('div', { class: 'gg-summary-meta' }, [
-        el('div', { class: 'gg-summary-name' }, [gg.name || 'Playlist']),
-        el('div', { class: 'gg-summary-count' }, [String(items.length) + ' video']),
-        el('div', { class: 'gg-summary-hint' }, ['Klik untuk membuka'])
+      summary.appendChild(el('h3', {}, [gg.name || 'Playlist']));
+      summary.appendChild(el('div', { class: 'vg-summary-foot' }, [
+        el('span', { class: 'vg-foot-count' }, [String(items.length) + ' video']),
+        el('span', { class: 'vg-foot-hint' }, ['Buka grup ▸'])
       ]));
-      summary.appendChild(el('span', { class: 'gg-summary-chevron', 'aria-hidden': 'true' }, ['▸']));
       groupEl.appendChild(summary);
       return groupEl;
     }
@@ -2251,31 +2255,40 @@
     const toggle = document.getElementById('navToggle');
     const links = document.getElementById('navLinks');
     toggle?.addEventListener('click', () => links?.classList.toggle('open'));
+
+    function closeAllDropdowns() {
+      document.querySelectorAll('.nav-dropdown.open').forEach(function (dd) {
+        dd.classList.remove('open');
+        const b = dd.querySelector('.nav-dropdown-toggle');
+        if (b) b.setAttribute('aria-expanded', 'false');
+      });
+    }
+
     links?.querySelectorAll('a').forEach((a) => {
       a.addEventListener('click', () => {
         links.classList.remove('open');
-        document.getElementById('navMore')?.classList.remove('open');
-        const btn = document.getElementById('navMoreBtn');
-        if (btn) btn.setAttribute('aria-expanded', 'false');
+        closeAllDropdowns();
       });
     });
 
-    const more = document.getElementById('navMore');
-    const moreBtn = document.getElementById('navMoreBtn');
-    if (more && moreBtn) {
-      moreBtn.addEventListener('click', (e) => {
+    document.querySelectorAll('.nav-dropdown').forEach(function (dd) {
+      const btn = dd.querySelector('.nav-dropdown-toggle');
+      if (!btn) return;
+      btn.addEventListener('click', function (e) {
         e.preventDefault();
         e.stopPropagation();
-        const open = more.classList.toggle('open');
-        moreBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
-      });
-      document.addEventListener('click', (e) => {
-        if (!more.contains(e.target)) {
-          more.classList.remove('open');
-          moreBtn.setAttribute('aria-expanded', 'false');
+        const willOpen = !dd.classList.contains('open');
+        closeAllDropdowns();
+        if (willOpen) {
+          dd.classList.add('open');
+          btn.setAttribute('aria-expanded', 'true');
         }
       });
-    }
+    });
+
+    document.addEventListener('click', function (e) {
+      if (!e.target.closest('.nav-dropdown')) closeAllDropdowns();
+    });
   }
 
 
@@ -2346,6 +2359,28 @@
     galleryGroupFile: [
       { key: 'title', label: 'Judul foto', type: 'text' },
       { key: 'desc', label: 'Deskripsi (opsional, kosong = tidak ditampilkan)', type: 'textarea' }
+    ],
+    galleryGroups: [
+      { key: 'name', label: 'Nama grup foto', type: 'text' },
+      { key: 'folder', label: 'Path folder', type: 'text' },
+      { key: 'date', label: 'Tanggal', type: 'text' },
+      { key: 'order', label: 'Urutan', type: 'text' }
+    ],
+    videoGroups: [
+      { key: 'name', label: 'Nama grup video', type: 'text' },
+      { key: 'coverIndex', label: 'Index thumbnail (0 = video pertama, 1 = kedua, dst)', type: 'text' },
+      { key: 'playlistUrl', label: 'URL playlist YT (opsional)', type: 'text' },
+      { key: 'driveFolderUrl', label: 'URL folder Drive (opsional)', type: 'text' },
+      { key: 'date', label: 'Tanggal', type: 'text' },
+      { key: 'order', label: 'Urutan', type: 'text' }
+    ],
+    videoGroupItem: [
+      { key: 'title', label: 'Judul video', type: 'text' },
+      { key: 'desc', label: 'Deskripsi (opsional)', type: 'textarea' },
+      { key: 'youtubeId', label: 'YouTube ID (jika YT)', type: 'text' },
+      { key: 'thumb', label: 'URL thumbnail', type: 'text' },
+      { key: 'embedUrl', label: 'URL embed / preview', type: 'text' },
+      { key: 'url', label: 'URL buka video', type: 'text' }
     ],
     videos: [
       { key: 'title', label: 'Judul', type: 'text' },
@@ -2803,6 +2838,13 @@
         const parts = key.split(':');
         if (parts.length < 3) return;
         type = 'galleryGroupFile';
+        index = parseInt(parts[1], 10);
+        extra = parseInt(parts[2], 10);
+        if (Number.isNaN(index) || Number.isNaN(extra)) return;
+      } else if (key.indexOf('videoGroupItem:') === 0) {
+        const parts = key.split(':');
+        if (parts.length < 3) return;
+        type = 'videoGroupItem';
         index = parseInt(parts[1], 10);
         extra = parseInt(parts[2], 10);
         if (Number.isNaN(index) || Number.isNaN(extra)) return;

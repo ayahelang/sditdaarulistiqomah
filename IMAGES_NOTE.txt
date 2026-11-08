@@ -1,0 +1,2 @@
+Folder images/ tidak disertakan di zip ini.
+Gunakan images/ yang sudah ada di repo GitHub (tidak berubah).
