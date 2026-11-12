@@ -396,7 +396,8 @@
       { key: 'defaultTitle', label: 'Judul default (opsional — jika diisi, semua foto pakai judul ini; kosong = dari nama file)', type: 'text' },
       { key: 'defaultDesc', label: 'Deskripsi default (opsional — jika diisi, tiap foto: deskripsi + nama file; kosong = tanpa deskripsi)', type: 'textarea' },
       { key: 'order', label: 'Urutan (angka, kecil = atas)', type: 'text' },
-      { key: 'active', label: 'Aktif (true/false)', type: 'text' }
+      { key: 'active', label: 'Aktif (true/false)', type: 'text' },
+      { key: 'coverIndex', label: 'Index thumbnail (0 = foto ke-1)', type: 'text' }
     ],
     videos: [
       { key: 'title', label: 'Judul', type: 'text' },
@@ -512,12 +513,31 @@
     const list = getListRef(type);
     const item = index >= 0 ? Object.assign({}, list[index]) : {};
     const schema = SCHEMAS[type] || [];
-    $('editModalTitle').textContent = index >= 0 ? 'Edit ' + type : 'Tambah ' + type;
+        const titleMap = {
+      videoGroups: 'Video Group',
+      galleryGroups: 'Foto Groups',
+      videos: 'Video',
+      gallery: 'Foto',
+      articles: 'Artikel',
+      carousel: 'Carousel',
+      programs: 'Program',
+      activities: 'Kegiatan',
+      announcements: 'Pengumuman',
+      facilities: 'Fasilitas',
+      teachers: 'Guru',
+      leadership: 'Pimpinan',
+      achievements: 'Prestasi',
+      calendar: 'Kalender',
+      faq: 'FAQ',
+      media: 'Media'
+    };
+    const nice = titleMap[type] || type;
+    $('editModalTitle').textContent = (index >= 0 ? 'Edit ' : 'Tambah ') + nice;
     const box = $('editFields');
     box.innerHTML = '';
     schema.forEach((f) => {
       // coverIndex diganti UI visual di bawah
-      if (type === 'videoGroups' && f.key === 'coverIndex') return;
+      if ((type === 'videoGroups' || type === 'galleryGroups') && f.key === 'coverIndex') return;
       const lab = document.createElement('label');
       lab.textContent = f.label;
       box.appendChild(lab);
@@ -559,7 +579,7 @@
         hint.textContent = 'Belum ada video di grup. Deteksi/generate grup dulu agar bisa memilih thumbnail.';
         box.appendChild(hint);
       } else {
-        hint.textContent = 'Klik salah satu video untuk dijadikan thumbnail card pembuka (saat ini: video ke-' + (cur + 1) + ').';
+        hint.textContent = 'Klik salah satu video untuk thumbnail (saat ini: video ke-' + (cur + 1) + ')';
         box.appendChild(hint);
 
         const grid = document.createElement('div');
@@ -613,13 +633,106 @@
             mark.textContent = '\u2713';
             mark.style.cssText = 'position:absolute;top:4px;right:4px;background:#0B6E4F;color:#fff;font-size:.75rem;font-weight:800;width:22px;height:22px;border-radius:50%;display:grid;place-items:center';
             cell.appendChild(mark);
-            hint.textContent = 'Klik salah satu video untuk dijadikan thumbnail card pembuka (saat ini: video ke-' + (i + 1) + ')';
+            hint.textContent = 'Klik salah satu video untuk thumbnail (saat ini: video ke-' + (i + 1) + ')';
           });
           grid.appendChild(cell);
         });
         box.appendChild(grid);
       }
     }
+
+    if (type === 'galleryGroups') {
+      const files = Array.isArray(item.files) ? item.files : [];
+      let cur = parseInt(item.coverIndex, 10);
+      if (Number.isNaN(cur) || cur < 0) cur = 0;
+      if (files.length && cur >= files.length) cur = 0;
+
+      const hidden = document.createElement('input');
+      hidden.type = 'hidden';
+      hidden.id = 'ef_coverIndex';
+      hidden.dataset.key = 'coverIndex';
+      hidden.value = String(cur);
+      box.appendChild(hidden);
+
+      const labC = document.createElement('label');
+      labC.textContent = 'Thumbnail card pembuka grup';
+      box.appendChild(labC);
+
+      const hint = document.createElement('p');
+      hint.className = 'hint';
+      hint.style.margin = '0 0 .5rem';
+      if (!files.length) {
+        hint.textContent = 'Belum ada foto di grup. Scan folder dulu agar bisa memilih thumbnail.';
+        box.appendChild(hint);
+      } else {
+        hint.textContent = 'Klik salah satu foto untuk thumbnail (saat ini: foto ke-' + (cur + 1) + ')';
+        box.appendChild(hint);
+
+        const folder = String(item.folder || '').replace(/\/+$/, '');
+        const grid = document.createElement('div');
+        grid.id = 'ggCoverPicker';
+        grid.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px;max-height:260px;overflow:auto;padding:4px 2px 8px';
+
+        files.forEach(function (f, i) {
+          const fname = (f && (f.file || f.name)) || '';
+          let src = '';
+          if (f && f.thumb) src = f.thumb;
+          else if (folder && fname) src = '../' + folder + '/' + fname;
+          else if (fname) src = '../' + fname;
+
+          const cell = document.createElement('button');
+          cell.type = 'button';
+          cell.setAttribute('data-cover-i', String(i));
+          cell.title = (f && f.title) || fname || ('Foto ' + (i + 1));
+          cell.style.cssText =
+            'position:relative;border:2px solid ' + (i === cur ? '#0B6E4F' : 'rgba(11,110,79,.18)') +
+            ';border-radius:10px;padding:0;overflow:hidden;background:#e8f0ec;cursor:pointer;aspect-ratio:1';
+          if (src) {
+            const im = document.createElement('img');
+            im.src = src;
+            im.alt = '';
+            im.style.cssText = 'width:100%;height:100%;object-fit:cover;display:block';
+            im.onerror = function () { im.style.display = 'none'; };
+            cell.appendChild(im);
+          } else {
+            const sp = document.createElement('span');
+            sp.textContent = 'Foto';
+            sp.style.cssText = 'color:#084C37;font-size:.75rem;display:grid;place-items:center;height:100%';
+            cell.appendChild(sp);
+          }
+          const badge = document.createElement('span');
+          badge.textContent = String(i + 1);
+          badge.style.cssText = 'position:absolute;top:4px;left:4px;background:rgba(8,76,55,.9);color:#fff;font-size:.7rem;font-weight:700;padding:2px 6px;border-radius:999px';
+          cell.appendChild(badge);
+          if (i === cur) {
+            const ok = document.createElement('span');
+            ok.className = 'vg-cover-ok';
+            ok.textContent = '\u2713';
+            ok.style.cssText = 'position:absolute;top:4px;right:4px;background:#0B6E4F;color:#fff;font-size:.75rem;font-weight:800;width:22px;height:22px;border-radius:50%;display:grid;place-items:center';
+            cell.appendChild(ok);
+          }
+          cell.addEventListener('click', function (e) {
+            e.preventDefault();
+            hidden.value = String(i);
+            grid.querySelectorAll('button[data-cover-i]').forEach(function (b) {
+              const bi = parseInt(b.getAttribute('data-cover-i'), 10);
+              b.style.borderColor = bi === i ? '#0B6E4F' : 'rgba(11,110,79,.18)';
+              const mark = b.querySelector('.vg-cover-ok');
+              if (mark) mark.remove();
+            });
+            const mark = document.createElement('span');
+            mark.className = 'vg-cover-ok';
+            mark.textContent = '\u2713';
+            mark.style.cssText = 'position:absolute;top:4px;right:4px;background:#0B6E4F;color:#fff;font-size:.75rem;font-weight:800;width:22px;height:22px;border-radius:50%;display:grid;place-items:center';
+            cell.appendChild(mark);
+            hint.textContent = 'Klik salah satu foto untuk thumbnail (saat ini: foto ke-' + (i + 1) + ')';
+          });
+          grid.appendChild(cell);
+        });
+        box.appendChild(grid);
+      }
+    }
+
 
     $('editModal').hidden = false;
   }
@@ -664,6 +777,13 @@
       if (nItems && ci >= nItems) ci = 0;
       item.coverIndex = ci;
       if (!Array.isArray(item.items)) item.items = [];
+    }
+    if (type === 'galleryGroups') {
+      var gci = parseInt(item.coverIndex, 10);
+      if (Number.isNaN(gci) || gci < 0) gci = 0;
+      var nFiles = Array.isArray(item.files) ? item.files.length : 0;
+      if (nFiles && gci >= nFiles) gci = 0;
+      item.coverIndex = gci;
     }
     if (type === 'galleryGroups') {
       if (!item.id) item.id = 'gg_' + Date.now();

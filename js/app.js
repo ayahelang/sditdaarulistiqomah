@@ -643,7 +643,10 @@
 
     function makeGroupSummary(gg, gIdx, gKey) {
       const files = Array.isArray(gg.files) ? gg.files : [];
-      const first = fileToCard(gg, files[0], 0, gIdx);
+      var coverIdx = parseInt(gg.coverIndex, 10);
+      if (Number.isNaN(coverIdx) || coverIdx < 0) coverIdx = 0;
+      if (files.length && coverIdx >= files.length) coverIdx = 0;
+      const first = files.length ? fileToCard(gg, files[coverIdx], coverIdx, gIdx) : null;
       const groupEl = el('div', {
         class: 'gallery-group is-collapsed',
         'data-gg-key': gKey,
@@ -670,7 +673,7 @@
         }
       }, []);
       const thumbWrap = el('div', { class: 'gg-summary-thumb' }, []);
-      if (first.image) {
+      if (first && first.image) {
         thumbWrap.appendChild(el('img', { src: first.image, alt: first.title || '', loading: 'lazy' }));
       } else {
         thumbWrap.appendChild(el('div', { class: 'gallery-placeholder' }, ['Foto']));
@@ -688,17 +691,13 @@
 
     function makeOpenGroup(gg, gIdx, gKey) {
       const files = Array.isArray(gg.files) ? gg.files : [];
-      // Urutan dalam grup foto = urutan file di data (1,2,3…), bukan alfabet nama file
-      let fileOrder = files.map(function (f, i) {
-        const ord = (f && f.order != null && f.order !== '') ? Number(f.order) : i;
-        return { f: f, i: i, ord: isNaN(ord) ? i : ord };
-      });
+      let fileOrder = files.map(function (f, i) { return { f: f, i: i }; });
       const gSort = (_mediaFilter.gallery && _mediaFilter.gallery.sort) || 'newest';
       fileOrder.sort(function (a, b) {
-        if (a.ord !== b.ord) {
-          return gSort === 'oldest' ? (b.ord - a.ord) : (a.ord - b.ord);
-        }
-        return gSort === 'oldest' ? (b.i - a.i) : (a.i - b.i);
+        const na = String(a.f.file || a.f.name || '');
+        const nb = String(b.f.file || b.f.name || '');
+        if (gSort === 'oldest') return na.localeCompare(nb) || (a.i - b.i);
+        return nb.localeCompare(na) || (b.i - a.i);
       });
 
       if (!_ggShown[gKey] || _ggShown[gKey] < 1) {
@@ -991,19 +990,13 @@
 
     function makeOpenVg(gg, gIdx, gKey) {
       const items = Array.isArray(gg.items) ? gg.items : [];
-      // Urutan dalam grup = urutan aslinya (scan Drive/folder: 1,2,3…)
-      // Jangan sort alfabet judul — itu membuat urutan acak vs nomor urut.
-      let order = items.map(function (it, i) {
-        const ord = (it && it.order != null && it.order !== '') ? Number(it.order) : i;
-        return { it: it, i: i, ord: isNaN(ord) ? i : ord };
-      });
+      let order = items.map(function (it, i) { return { it: it, i: i }; });
       const gSort = (_mediaFilter.videos && _mediaFilter.videos.sort) || 'newest';
       order.sort(function (a, b) {
-        if (a.ord !== b.ord) {
-          // newest: pertahankan order kecil di depan (urutan folder); oldest: balik
-          return gSort === 'oldest' ? (b.ord - a.ord) : (a.ord - b.ord);
-        }
-        return gSort === 'oldest' ? (b.i - a.i) : (a.i - b.i);
+        const ta = String(a.it.title || a.it.youtubeId || '');
+        const tb = String(b.it.title || b.it.youtubeId || '');
+        if (gSort === 'oldest') return ta.localeCompare(tb) || (a.i - b.i);
+        return tb.localeCompare(ta) || (b.i - a.i);
       });
       if (!_vgShown[gKey] || _vgShown[gKey] < 1) {
         _vgShown[gKey] = Math.min(PAGE.videoGroup, items.length);
