@@ -408,7 +408,8 @@
       { key: 'playlistUrl', label: 'URL playlist YouTube (opsional)', type: 'text' },
       { key: 'date', label: 'Tanggal (YYYY-MM-DD)', type: 'text' },
       { key: 'order', label: 'Urutan (angka, kecil = atas)', type: 'text' },
-      { key: 'active', label: 'Aktif (true/false)', type: 'text' }
+      { key: 'active', label: 'Aktif (true/false)', type: 'text' },
+      { key: 'coverIndex', label: 'Index thumbnail (0 = video ke-1)', type: 'text' }
     ],
     announcements: [
       { key: 'title', label: 'Judul', type: 'text' },
@@ -515,6 +516,8 @@
     const box = $('editFields');
     box.innerHTML = '';
     schema.forEach((f) => {
+      // coverIndex diganti UI visual di bawah
+      if (type === 'videoGroups' && f.key === 'coverIndex') return;
       const lab = document.createElement('label');
       lab.textContent = f.label;
       box.appendChild(lab);
@@ -531,6 +534,93 @@
       input.id = 'ef_' + f.key;
       box.appendChild(input);
     });
+
+    if (type === 'videoGroups') {
+      const items = Array.isArray(item.items) ? item.items : [];
+      let cur = parseInt(item.coverIndex, 10);
+      if (Number.isNaN(cur) || cur < 0) cur = 0;
+      if (items.length && cur >= items.length) cur = 0;
+
+      const hidden = document.createElement('input');
+      hidden.type = 'hidden';
+      hidden.id = 'ef_coverIndex';
+      hidden.dataset.key = 'coverIndex';
+      hidden.value = String(cur);
+      box.appendChild(hidden);
+
+      const labC = document.createElement('label');
+      labC.textContent = 'Thumbnail card pembuka grup';
+      box.appendChild(labC);
+
+      const hint = document.createElement('p');
+      hint.className = 'hint';
+      hint.style.margin = '0 0 .5rem';
+      if (!items.length) {
+        hint.textContent = 'Belum ada video di grup. Deteksi/generate grup dulu agar bisa memilih thumbnail.';
+        box.appendChild(hint);
+      } else {
+        hint.textContent = 'Klik salah satu video untuk dijadikan thumbnail card pembuka (saat ini: video ke-' + (cur + 1) + ').';
+        box.appendChild(hint);
+
+        const grid = document.createElement('div');
+        grid.id = 'vgCoverPicker';
+        grid.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px;max-height:260px;overflow:auto;padding:4px 2px 8px';
+
+        items.forEach(function (it, i) {
+          const id = it.youtubeId || '';
+          const src = it.thumb || (id ? ('https://img.youtube.com/vi/' + id + '/hqdefault.jpg') : '');
+          const cell = document.createElement('button');
+          cell.type = 'button';
+          cell.setAttribute('data-cover-i', String(i));
+          cell.title = (it.title || ('Video ' + (i + 1)));
+          cell.style.cssText =
+            'position:relative;border:2px solid ' + (i === cur ? '#0B6E4F' : 'rgba(11,110,79,.18)') +
+            ';border-radius:10px;padding:0;overflow:hidden;background:#0a2f24;cursor:pointer;aspect-ratio:16/9';
+          if (src) {
+            const im = document.createElement('img');
+            im.src = src;
+            im.alt = '';
+            im.style.cssText = 'width:100%;height:100%;object-fit:cover;display:block';
+            cell.appendChild(im);
+          } else {
+            const sp = document.createElement('span');
+            sp.textContent = 'Video';
+            sp.style.cssText = 'color:#fff;font-size:.75rem;display:grid;place-items:center;height:100%';
+            cell.appendChild(sp);
+          }
+          const badge = document.createElement('span');
+          badge.textContent = String(i + 1);
+          badge.style.cssText = 'position:absolute;top:4px;left:4px;background:rgba(8,76,55,.9);color:#fff;font-size:.7rem;font-weight:700;padding:2px 6px;border-radius:999px';
+          cell.appendChild(badge);
+          if (i === cur) {
+            const ok = document.createElement('span');
+            ok.className = 'vg-cover-ok';
+            ok.textContent = '\u2713';
+            ok.style.cssText = 'position:absolute;top:4px;right:4px;background:#0B6E4F;color:#fff;font-size:.75rem;font-weight:800;width:22px;height:22px;border-radius:50%;display:grid;place-items:center';
+            cell.appendChild(ok);
+          }
+          cell.addEventListener('click', function (e) {
+            e.preventDefault();
+            hidden.value = String(i);
+            grid.querySelectorAll('button[data-cover-i]').forEach(function (b) {
+              const bi = parseInt(b.getAttribute('data-cover-i'), 10);
+              b.style.borderColor = bi === i ? '#0B6E4F' : 'rgba(11,110,79,.18)';
+              const mark = b.querySelector('.vg-cover-ok');
+              if (mark) mark.remove();
+            });
+            const mark = document.createElement('span');
+            mark.className = 'vg-cover-ok';
+            mark.textContent = '\u2713';
+            mark.style.cssText = 'position:absolute;top:4px;right:4px;background:#0B6E4F;color:#fff;font-size:.75rem;font-weight:800;width:22px;height:22px;border-radius:50%;display:grid;place-items:center';
+            cell.appendChild(mark);
+            hint.textContent = 'Klik salah satu video untuk dijadikan thumbnail card pembuka (saat ini: video ke-' + (i + 1) + ')';
+          });
+          grid.appendChild(cell);
+        });
+        box.appendChild(grid);
+      }
+    }
+
     $('editModal').hidden = false;
   }
 
@@ -562,6 +652,18 @@
       const el = document.getElementById('ef_' + requiredKey);
       if (el) { el.focus(); el.style.outline = '2px solid #c0392b'; }
       return;
+    }
+    if (type === 'videoGroups') {
+      if (!item.id) item.id = 'vg' + Date.now();
+      if (item.active === undefined || item.active === '') item.active = true;
+      if (typeof item.active === 'string') item.active = (item.active.toLowerCase() !== 'false');
+      if (item.order !== undefined && item.order !== '') item.order = parseInt(item.order, 10) || 0;
+      var ci = parseInt(item.coverIndex, 10);
+      if (Number.isNaN(ci) || ci < 0) ci = 0;
+      var nItems = Array.isArray(item.items) ? item.items.length : 0;
+      if (nItems && ci >= nItems) ci = 0;
+      item.coverIndex = ci;
+      if (!Array.isArray(item.items)) item.items = [];
     }
     if (type === 'galleryGroups') {
       if (!item.id) item.id = 'gg_' + Date.now();
