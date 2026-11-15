@@ -2741,47 +2741,105 @@
     if (!box) return;
     box.innerHTML = '';
     data.videoGroups.forEach(function (grp, gi) {
-      const n = (grp.items || []).length;
+      const items = Array.isArray(grp.items) ? grp.items : [];
+      const n = items.length;
+
       const row = document.createElement('div');
-      row.className = 'list-row';
-      row.innerHTML =
-        '<div class="list-main"><strong>' + (grp.name || 'Grup video') + '</strong>' +
+      row.className = 'list-item gg-admin-card vg-admin-card';
+      row.style.cssText = 'flex-direction:column;align-items:stretch;gap:10px';
+
+      const top = document.createElement('div');
+      top.style.cssText = 'display:flex;flex-wrap:wrap;justify-content:space-between;gap:10px;align-items:flex-start';
+
+      const mid = document.createElement('div');
+      mid.className = 'li-info';
+      const activeBadge = grp.active === false
+        ? '<span class="badge" style="background:#fee2e2;color:#991b1b">nonaktif</span>'
+        : '<span class="badge video">aktif</span>';
+      const extra = [];
+      if (grp.playlistUrl) extra.push('playlist YT');
+      if (grp.driveFolderUrl) extra.push('Drive');
+      mid.innerHTML =
+        activeBadge + ' <strong>' + escapeHtml(grp.name || '(tanpa nama)') + '</strong>' +
         '<div class="meta">' + n + ' video' +
-        (grp.playlistUrl ? (' · playlist') : '') + '</div></div>';
-      const actions = document.createElement('div');
-      actions.className = 'actions-row';
+        (extra.length ? (' · ' + extra.join(' · ')) : '') +
+        (grp.order != null && grp.order !== '' ? (' · order ' + escapeHtml(String(grp.order))) : '') +
+        '</div>';
+      top.appendChild(mid);
+
+      const acts = document.createElement('div');
+      acts.className = 'li-actions';
+      acts.style.cssText = 'flex-wrap:wrap';
+
       const edit = document.createElement('button');
-      edit.type = 'button'; edit.className = 'btn btn-ghost'; edit.textContent = 'Edit';
+      edit.type = 'button';
+      edit.className = 'btn btn-ghost';
+      edit.textContent = 'Edit Grup';
       edit.onclick = function () { openEditor('videoGroups', gi); };
+      acts.appendChild(edit);
+
       const del = document.createElement('button');
-      del.type = 'button'; del.className = 'btn btn-ghost'; del.style.color = '#b91c1c'; del.textContent = 'Hapus';
+      del.type = 'button';
+      del.className = 'btn btn-danger';
+      del.textContent = 'Hapus';
       del.onclick = function () {
         if (!confirm('Hapus grup "' + (grp.name || '') + '"?')) return;
         data.videoGroups.splice(gi, 1);
         window.__siteDirty = true;
         const db = document.getElementById('dirtyBanner');
         if (db) { db.hidden = false; db.style.display = 'block'; }
-        renderLists();
+        renderVideoGroupsAdmin();
+        try { renderLists(); } catch (_) {}
         status('Grup video dihapus (lokal). Simpan ke Google Sheets.');
       };
-      actions.appendChild(edit);
-      actions.appendChild(del);
-      row.appendChild(actions);
-      const thumbs = document.createElement('div');
-      thumbs.style.cssText = 'display:flex;flex-wrap:wrap;gap:6px;margin-top:.5rem;width:100%';
-      (grp.items || []).slice(0, 8).forEach(function (it) {
-        const id = it.youtubeId || '';
-        const src = it.thumb || (id ? ('https://img.youtube.com/vi/' + id + '/hqdefault.jpg') : '');
-        if (!src) return;
-        const im = document.createElement('img');
-        im.src = src; im.alt = it.title || '';
-        im.style.cssText = 'width:56px;height:56px;object-fit:cover;border-radius:8px;border:1px solid rgba(11,110,79,.12)';
-        thumbs.appendChild(im);
-      });
-      row.appendChild(thumbs);
+      acts.appendChild(del);
+      top.appendChild(acts);
+      row.appendChild(top);
+
+      if (n) {
+        const prev = document.createElement('div');
+        prev.className = 'gg-admin-preview';
+        prev.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fill,minmax(88px,1fr));gap:8px';
+        const maxShow = Math.min(n, 12);
+        for (let vi = 0; vi < maxShow; vi++) {
+          const it = items[vi];
+          const id = (it && it.youtubeId) || '';
+          const src = (it && it.thumb) || (id ? ('https://img.youtube.com/vi/' + id + '/hqdefault.jpg') : '');
+          const cell = document.createElement('button');
+          cell.type = 'button';
+          cell.title = ((it && it.title) || ('Video ' + (vi + 1))) + ' — klik Edit Grup';
+          cell.style.cssText = 'border:1px solid #e5e7eb;border-radius:10px;overflow:hidden;padding:0;background:#f9fafb;cursor:pointer;text-align:left';
+          cell.innerHTML =
+            '<div style="aspect-ratio:16/9;background:#0a2f24;overflow:hidden;position:relative">' +
+              (src
+                ? '<img src="' + escapeHtml(src) + '" alt="" loading="lazy" decoding="async" style="width:100%;height:100%;object-fit:cover" onerror="this.style.display=\'none\'">'
+                : '') +
+              '<span style="position:absolute;inset:0;display:grid;place-items:center;pointer-events:none;background:rgba(8,76,55,.25)">' +
+                '<span style="width:28px;height:28px;border-radius:50%;background:#fff;color:#0B6E4F;display:grid;place-items:center;font-size:.7rem;font-weight:700">▶</span>' +
+              '</span>' +
+            '</div>' +
+            '<div style="padding:4px 6px;font-size:.68rem;line-height:1.25;max-height:2.6em;overflow:hidden">' +
+              escapeHtml((it && it.title) || ('Video ' + (vi + 1))) +
+            '</div>';
+          cell.onclick = function () { openEditor('videoGroups', gi); };
+          prev.appendChild(cell);
+        }
+        if (n > maxShow) {
+          const more = document.createElement('button');
+          more.type = 'button';
+          more.className = 'btn btn-ghost';
+          more.style.cssText = 'min-height:88px;border-radius:10px;border:1px dashed rgba(11,110,79,.35)';
+          more.textContent = '+' + (n - maxShow) + ' lagi';
+          more.onclick = function () { openEditor('videoGroups', gi); };
+          prev.appendChild(more);
+        }
+        row.appendChild(prev);
+      }
+
       box.appendChild(row);
     });
   }
+
 
   async function apiFetchYtPlaylist(playlistUrl) {
     const conf = window.SDIT_CONFIG || {};
