@@ -1032,10 +1032,11 @@
         'data-admin-edit': 'videoGroups:' + gIdx,
         title: 'Ctrl+Alt+Shift + double-click untuk edit grup (termasuk pilih thumbnail)'
       }, []);
-      // Bentuk sama seperti video-card: thumb 16:9 + judul di bawah
-      const summary = el('button', {
-        type: 'button',
+      // Tampilan sama seperti card video biasa (article.video-card)
+      const summary = el('article', {
         class: 'video-card vg-summary-card',
+        role: 'button',
+        tabindex: '0',
         title: 'Buka grup ' + (gg.name || ''),
         onclick: function (ev) {
           ev.preventDefault();
@@ -1045,13 +1046,16 @@
             _vgShown[gKey] = Math.min(PAGE.videoGroup, items.length);
           }
           paint();
-          try {
-            const node = box.querySelector('[data-vg-key="' + CSS.escape(gKey) + '"]');
-            if (node) node.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-          } catch (_) {}
+          focusGroupCard(box, 'data-vg-key', gKey);
+        },
+        onkeydown: function (ev) {
+          if (ev.key === 'Enter' || ev.key === ' ') {
+            ev.preventDefault();
+            summary.click();
+          }
         }
       }, []);
-      const thumbWrap = el('div', { class: 'video-thumb vg-summary-thumb' }, []);
+      const thumbWrap = el('div', { class: 'video-thumb' }, []);
       if (coverCard && coverCard.thumb) {
         thumbWrap.appendChild(el('img', { src: coverCard.thumb, alt: coverCard.title || '', loading: 'lazy' }));
       } else {
@@ -1059,10 +1063,10 @@
       }
       thumbWrap.appendChild(el('div', { class: 'play' }, [el('span', {}, ['▶'])]));
       summary.appendChild(thumbWrap);
-      summary.appendChild(el('h3', {}, [gg.name || 'Playlist']));
-      summary.appendChild(el('div', { class: 'vg-summary-foot' }, [
-        el('span', { class: 'vg-foot-count' }, [String(items.length) + ' video']),
-        el('span', { class: 'vg-foot-hint' }, ['Buka grup ▸'])
+      // Judul + jumlah seperti pola title + v-desc pada card video tunggal
+      summary.appendChild(el('h3', {}, [
+        gg.name || 'Playlist',
+        el('span', { class: 'v-desc' }, [String(items.length) + ' video'])
       ]));
       groupEl.appendChild(summary);
       return groupEl;

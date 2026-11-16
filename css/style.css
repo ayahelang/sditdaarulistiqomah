@@ -1636,3 +1636,35 @@ body.admin-edit-armed [data-admin-edit]:hover {
   box-shadow: 0 0 0 6px rgba(11, 110, 79, 0.12), var(--shadow, 0 4px 14px rgba(0,0,0,.08));
   transition: outline 0.2s ease, box-shadow 0.2s ease;
 }
+
+/* Card grup video = tampilan card video biasa */
+.vg-group.is-collapsed {
+  margin-top: 0;
+  height: 100%;
+}
+.vg-group .vg-summary-card {
+  height: 100%;
+  cursor: pointer;
+  border: none;
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  background: #fff;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+.vg-group .vg-summary-card:hover {
+  box-shadow: 0 8px 24px rgba(8, 76, 55, 0.12);
+}
+.vg-group .vg-summary-card .video-thumb {
+  cursor: pointer;
+}
+.vg-group .vg-summary-card h3 {
+  margin: 0;
+}
+.gg-mixed-grid.grid-2 > .vg-group,
+.grid-2.gg-mixed-grid > .vg-group {
+  min-width: 0;
+}
