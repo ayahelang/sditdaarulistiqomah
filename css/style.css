@@ -1668,3 +1668,47 @@ body.admin-edit-armed [data-admin-edit]:hover {
 .grid-2.gg-mixed-grid > .vg-group {
   min-width: 0;
 }
+
+/* Grup video tertutup: pakai gaya card grup foto (gg-summary) */
+.grid-2.gg-mixed-grid > .vg-group.is-collapsed,
+.gg-mixed-grid > .vg-group.is-collapsed {
+  margin-top: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+.grid-2.gg-mixed-grid .vg-group .gg-summary,
+.gg-mixed-grid .vg-group .gg-summary {
+  flex-direction: column;
+  align-items: stretch;
+  height: 100%;
+  min-height: 0;
+  padding: 0;
+  gap: 0;
+  overflow: hidden;
+  position: relative;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  border: 1px solid rgba(11,110,79,.08);
+  background: #fff;
+}
+.grid-2.gg-mixed-grid .vg-group .gg-summary-thumb,
+.gg-mixed-grid .vg-group .gg-summary-thumb {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 4 / 3;
+  border-radius: 0;
+  flex-shrink: 0;
+}
+.grid-2.gg-mixed-grid .vg-group .gg-summary-meta,
+.gg-mixed-grid .vg-group .gg-summary-meta {
+  padding: .65rem .8rem .85rem;
+  flex: 1;
+}
+.grid-2.gg-mixed-grid .vg-group .gg-summary-chevron,
+.gg-mixed-grid .vg-group .gg-summary-chevron {
+  position: absolute;
+  right: .65rem;
+  bottom: .55rem;
+  opacity: .65;
+}

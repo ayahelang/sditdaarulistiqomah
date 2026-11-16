@@ -1032,11 +1032,10 @@
         'data-admin-edit': 'videoGroups:' + gIdx,
         title: 'Ctrl+Alt+Shift + double-click untuk edit grup (termasuk pilih thumbnail)'
       }, []);
-      // Tampilan sama seperti card video biasa (article.video-card)
-      const summary = el('article', {
-        class: 'video-card vg-summary-card',
-        role: 'button',
-        tabindex: '0',
+      // Tampilan sama seperti card grup foto (gg-summary)
+      const summary = el('button', {
+        type: 'button',
+        class: 'gg-summary',
         title: 'Buka grup ' + (gg.name || ''),
         onclick: function (ev) {
           ev.preventDefault();
@@ -1047,27 +1046,21 @@
           }
           paint();
           focusGroupCard(box, 'data-vg-key', gKey);
-        },
-        onkeydown: function (ev) {
-          if (ev.key === 'Enter' || ev.key === ' ') {
-            ev.preventDefault();
-            summary.click();
-          }
         }
       }, []);
-      const thumbWrap = el('div', { class: 'video-thumb' }, []);
+      const thumbWrap = el('div', { class: 'gg-summary-thumb' }, []);
       if (coverCard && coverCard.thumb) {
         thumbWrap.appendChild(el('img', { src: coverCard.thumb, alt: coverCard.title || '', loading: 'lazy' }));
       } else {
-        thumbWrap.appendChild(el('div', { class: 'video-placeholder' }, ['Video']));
+        thumbWrap.appendChild(el('div', { class: 'gallery-placeholder' }, ['Video']));
       }
-      thumbWrap.appendChild(el('div', { class: 'play' }, [el('span', {}, ['▶'])]));
       summary.appendChild(thumbWrap);
-      // Judul + jumlah seperti pola title + v-desc pada card video tunggal
-      summary.appendChild(el('h3', {}, [
-        gg.name || 'Playlist',
-        el('span', { class: 'v-desc' }, [String(items.length) + ' video'])
+      summary.appendChild(el('div', { class: 'gg-summary-meta' }, [
+        el('div', { class: 'gg-summary-name' }, [gg.name || 'Playlist']),
+        el('div', { class: 'gg-summary-count' }, [String(items.length) + ' video']),
+        el('div', { class: 'gg-summary-hint' }, ['Klik untuk membuka'])
       ]));
+      summary.appendChild(el('span', { class: 'gg-summary-chevron', 'aria-hidden': 'true' }, ['▸']));
       groupEl.appendChild(summary);
       return groupEl;
     }
