@@ -787,6 +787,7 @@
     }
     if (type === 'galleryGroups') {
       if (!item.id) item.id = 'gg_' + Date.now();
+      if (!item.date) item.date = new Date().toISOString();
       if (item.active === undefined || item.active === '') item.active = true;
       if (typeof item.active === 'string') item.active = (item.active.toLowerCase() !== 'false');
       if (item.order !== undefined && item.order !== '') item.order = parseInt(item.order, 10) || 0;
@@ -1295,6 +1296,31 @@
   }
 
 
+  function naturalAdminFileKey(name) {
+    return String(name || '')
+      .toLowerCase()
+      .replace(/(\d+)/g, function (n) {
+        return ('000000000000' + n).slice(-12);
+      });
+  }
+  function sortFilesByFilename(files) {
+    return (files || []).slice().sort(function (a, b) {
+      var na = naturalAdminFileKey(a && (a.file || a.name || a.fileName || a.title || ''));
+      var nb = naturalAdminFileKey(b && (b.file || b.name || b.fileName || b.title || ''));
+      if (na < nb) return -1;
+      if (na > nb) return 1;
+      return 0;
+    });
+  }
+  function sortVideoItemsByFilename(items) {
+    return (items || []).slice().sort(function (a, b) {
+      var na = naturalAdminFileKey(a && (a.fileName || a.file || a.name || a.title || a.youtubeId || ''));
+      var nb = naturalAdminFileKey(b && (b.fileName || b.file || b.name || b.title || b.youtubeId || ''));
+      if (na < nb) return -1;
+      if (na > nb) return 1;
+      return 0;
+    });
+  }
   function titleFromFilenameAdmin(name) {
     if (!name) return 'Foto';
     return String(name)
@@ -1343,7 +1369,7 @@
       const found = items
         .filter(function (it) { return it.type === 'file' && imgExt.test(it.name); })
         .map(function (it) { return it.name; })
-        .sort();
+        .sort(function (x, y) { return naturalAdminFileKey(x).localeCompare(naturalAdminFileKey(y)); });
       if (!found.length) {
         status('Tidak ada file gambar (jpg/jpeg/png/webp/gif) di folder ' + folder);
         return;
@@ -1398,7 +1424,7 @@
     if (!data || !Array.isArray(data.galleryGroups)) return;
     const gg = data.galleryGroups[groupIndex];
     if (!gg) return;
-    const files = Array.isArray(gg.files) ? gg.files : [];
+    const files = sortFilesByFilename(Array.isArray(gg.files) ? gg.files : []);
     if (!files.length) {
       status('Belum ada file. Klik Scan Folder dulu.');
       return;
@@ -1686,7 +1712,7 @@
         row.appendChild(top);
 
         // Preview thumbnails
-        const files = Array.isArray(gg.files) ? gg.files : [];
+        const files = sortFilesByFilename(Array.isArray(gg.files) ? gg.files : []);
         const folder = (gg.folder || '').replace(/\/+$/, '');
         if (files.length) {
           const prev = document.createElement('div');
@@ -2741,7 +2767,7 @@
     if (!box) return;
     box.innerHTML = '';
     data.videoGroups.forEach(function (grp, gi) {
-      const items = Array.isArray(grp.items) ? grp.items : [];
+      const items = sortVideoItemsByFilename(Array.isArray(grp.items) ? grp.items : []);
       const n = items.length;
 
       const row = document.createElement('div');
@@ -2874,7 +2900,12 @@
   }
   function applyGroupVideoTitles(items, groupName) {
     var gname = String(groupName || 'Video').trim() || 'Video';
+    // Urutkan menurut nama file (natural); chrono timestamp di nama file tetap didukung di sortVideoItemsChrono
     var sorted = sortVideoItemsChrono(items);
+    // Pastikan juga natural filename stabil
+    sorted = sortVideoItemsByFilename(sorted);
+    // Re-apply chrono if filenames contain 20YYMMDD timestamps (lebih akurat untuk Drive)
+    sorted = sortVideoItemsChrono(sorted);
     sorted.forEach(function (it, i) {
       it.title = gname + ' - Video ' + (i + 1);
     });
@@ -3059,7 +3090,7 @@ const btnVgFetch = $('btnVgFetchPlaylist');
         name: name,
         playlistUrl: playlist,
         driveFolderUrl: driveFolder,
-        date: new Date().toISOString().slice(0, 10),
+        date: new Date().toISOString(),
         order: 0,
         active: true,
         items: items

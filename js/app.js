@@ -116,11 +116,58 @@
     videos: { q: '', sort: 'newest' }
   };
 
+  /** Natural sort key: "file2" < "file10" (bukan lexicographic) */
+  function naturalFileKey(name) {
+    return String(name || '')
+      .toLowerCase()
+      .replace(/(\d+)/g, function (n) {
+        return ('000000000000' + n).slice(-12);
+      });
+  }
+  function compareByFilename(a, b) {
+    const ka = naturalFileKey(a);
+    const kb = naturalFileKey(b);
+    if (ka < kb) return -1;
+    if (ka > kb) return 1;
+    return 0;
+  }
+  /** Urutkan item grup berdasarkan nama file (asc). reverse=true untuk terlama. */
+  function sortGroupByFilename(list, getName, reverse) {
+    const arr = (list || []).map(function (item, i) {
+      return { item: item, i: i, key: naturalFileKey(getName(item)) };
+    });
+    arr.sort(function (a, b) {
+      if (a.key < b.key) return reverse ? 1 : -1;
+      if (a.key > b.key) return reverse ? -1 : 1;
+      return reverse ? (b.i - a.i) : (a.i - b.i);
+    });
+    return arr;
+  }
+
   function parseItemDate(it) {
-    const raw = (it && (it.date || it.createdAt || it.updatedAt || it.ts)) || '';
+    if (!it) return 0;
+    if (it._createdTs && Number(it._createdTs) > 0) return Number(it._createdTs);
+    const raw = it.date || it.createdAt || it.updatedAt || it.ts || '';
     if (!raw) return 0;
     const t = Date.parse(raw);
     return isNaN(t) ? 0 : t;
+  }
+
+  /** Waktu pembuatan grup: date/createdAt, atau angka dari id (vg173… / gg_173…) */
+  function groupCreatedTs(gg) {
+    if (!gg) return 0;
+    const fromDate = parseItemDate(gg);
+    if (fromDate > 0) return fromDate;
+    const id = String(gg.id || '');
+    const m = id.match(/(\d{10,})/);
+    if (m) {
+      const n = parseInt(m[1], 10);
+      // ms epoch ~ 1e12, detik ~ 1e9
+      if (n > 1e11) return n;
+      if (n > 1e9) return n * 1000;
+    }
+    if (typeof gg.order === 'number' && gg.order > 1000) return gg.order;
+    return 0;
   }
 
   function applyMediaFilter(list, kind) {
@@ -603,24 +650,29 @@
         if (hay.indexOf(q) === -1) return;
       }
       // Tetap masuk daftar (posisi dipertahankan saat dibuka)
-      tiles.push({
-        kind: 'group',
-        date: gg.date || '',
-        _idx: 200000 + (typeof gg.order === 'number' ? gg.order : gIdx),
-        gg: gg,
-        gIdx: gIdx,
-        gKey: gKey
-      });
+      {
+        const gTs = groupCreatedTs(gg);
+        tiles.push({
+          kind: 'group',
+          date: gg.date || gg.createdAt || (gTs ? new Date(gTs).toISOString() : ''),
+          _createdTs: gTs,
+          _idx: gTs || (1000000 + gIdx),
+          gg: gg,
+          gIdx: gIdx,
+          gKey: gKey
+        });
+      }
     });
 
     // Sort tile campuran (default newest)
     const sortDir = ((_mediaFilter.gallery && _mediaFilter.gallery.sort) === 'oldest') ? 1 : -1;
-    tiles.sort(function (a, b) {
-      const da = parseItemDate(a);
-      const db = parseItemDate(b);
-      if (da !== db) return (da - db) * sortDir;
-      return ((a._idx || 0) - (b._idx || 0)) * sortDir;
-    });
+          tiles.sort(function (a, b) {
+        const da = parseItemDate(a) || Number(a._createdTs) || 0;
+        const db = parseItemDate(b) || Number(b._createdTs) || 0;
+        if (da !== db) return (da - db) * sortDir;
+        // fallback: _idx (untuk grup = timestamp pembuatan)
+        return ((a._idx || 0) - (b._idx || 0)) * sortDir;
+      });
 
     _lists.gallery = tiles;
     if (shown.gallery > tiles.length) shown.gallery = tiles.length;
@@ -691,13 +743,13 @@
 
     function makeOpenGroup(gg, gIdx, gKey) {
       const files = Array.isArray(gg.files) ? gg.files : [];
-      let fileOrder = files.map(function (f, i) { return { f: f, i: i }; });
+      // Urutan dalam grup foto = nama file natural (1,2,10…), bukan judul alfabet terbalik
       const gSort = (_mediaFilter.gallery && _mediaFilter.gallery.sort) || 'newest';
-      fileOrder.sort(function (a, b) {
-        const na = String(a.f.file || a.f.name || '');
-        const nb = String(b.f.file || b.f.name || '');
-        if (gSort === 'oldest') return na.localeCompare(nb) || (a.i - b.i);
-        return nb.localeCompare(na) || (b.i - a.i);
+      const reverseG = (gSort === 'oldest');
+      let fileOrder = sortGroupByFilename(files, function (f) {
+        return f.file || f.name || f.title || '';
+      }, reverseG).map(function (row) {
+        return { f: row.item, i: row.i };
       });
 
       if (!_ggShown[gKey] || _ggShown[gKey] < 1) {
@@ -803,18 +855,20 @@
         }
         allSlots.push({
           kind: 'group',
-          date: gg.date || '',
-          _idx: 200000 + (typeof gg.order === 'number' ? gg.order : gIdx),
+          date: gg.date || gg.createdAt || '',
+          _createdTs: groupCreatedTs(gg),
+          _idx: groupCreatedTs(gg) || (1000000 + gIdx),
           gg: gg,
           gIdx: gIdx,
           gKey: gKey
         });
       });
       const sortDir = ((_mediaFilter.gallery && _mediaFilter.gallery.sort) === 'oldest') ? 1 : -1;
-      allSlots.sort(function (a, b) {
-        const da = parseItemDate(a);
-        const db = parseItemDate(b);
+            allSlots.sort(function (a, b) {
+        const da = parseItemDate(a) || Number(a._createdTs) || 0;
+        const db = parseItemDate(b) || Number(b._createdTs) || 0;
         if (da !== db) return (da - db) * sortDir;
+        // fallback: _idx (untuk grup = timestamp pembuatan)
         return ((a._idx || 0) - (b._idx || 0)) * sortDir;
       });
 
@@ -990,13 +1044,13 @@
 
     function makeOpenVg(gg, gIdx, gKey) {
       const items = Array.isArray(gg.items) ? gg.items : [];
-      let order = items.map(function (it, i) { return { it: it, i: i }; });
+      // Urutan dalam grup video = nama file (fileName), natural; fallback title
       const gSort = (_mediaFilter.videos && _mediaFilter.videos.sort) || 'newest';
-      order.sort(function (a, b) {
-        const ta = String(a.it.title || a.it.youtubeId || '');
-        const tb = String(b.it.title || b.it.youtubeId || '');
-        if (gSort === 'oldest') return ta.localeCompare(tb) || (a.i - b.i);
-        return tb.localeCompare(ta) || (b.i - a.i);
+      const reverseV = (gSort === 'oldest');
+      let order = sortGroupByFilename(items, function (it) {
+        return it.fileName || it.file || it.name || it.title || it.youtubeId || '';
+      }, reverseV).map(function (row) {
+        return { it: row.item, i: row.i };
       });
       if (!_vgShown[gKey] || _vgShown[gKey] < 1) {
         _vgShown[gKey] = Math.min(PAGE.videoGroup, items.length);
@@ -1095,18 +1149,20 @@
         }
         allSlots.push({
           kind: 'group',
-          date: gg.date || '',
-          _idx: 200000 + (typeof gg.order === 'number' ? gg.order : gIdx),
+          date: gg.date || gg.createdAt || '',
+          _createdTs: groupCreatedTs(gg),
+          _idx: groupCreatedTs(gg) || (1000000 + gIdx),
           gg: gg,
           gIdx: gIdx,
           gKey: gKey
         });
       });
       const sortDir = ((_mediaFilter.videos && _mediaFilter.videos.sort) === 'oldest') ? 1 : -1;
-      allSlots.sort(function (a, b) {
-        const da = parseItemDate(a);
-        const db = parseItemDate(b);
+            allSlots.sort(function (a, b) {
+        const da = parseItemDate(a) || Number(a._createdTs) || 0;
+        const db = parseItemDate(b) || Number(b._createdTs) || 0;
         if (da !== db) return (da - db) * sortDir;
+        // fallback: _idx (untuk grup = timestamp pembuatan)
         return ((a._idx || 0) - (b._idx || 0)) * sortDir;
       });
 
