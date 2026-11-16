@@ -110,6 +110,30 @@
   const _ggShown = Object.create(null);
   const _vgOpen = Object.create(null);
   const _vgShown = Object.create(null);
+
+  /** Setelah lipat/buka grup: scroll ke card ringkas grup tsb */
+  function focusGroupCard(box, attrName, gKey) {
+    if (!box || !gKey) return;
+    var tries = 0;
+    function go() {
+      tries++;
+      try {
+        var sel = '[' + attrName + '="' + (window.CSS && CSS.escape ? CSS.escape(gKey) : String(gKey).replace(/"/g, '\\"')) + '"]';
+        var node = box.querySelector(sel);
+        if (!node && tries < 8) {
+          requestAnimationFrame(go);
+          return;
+        }
+        if (!node) return;
+        node.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
+        node.classList.add('gg-focus-flash');
+        setTimeout(function () {
+          try { node.classList.remove('gg-focus-flash'); } catch (_) {}
+        }, 1400);
+      } catch (_) {}
+    }
+    requestAnimationFrame(function () { requestAnimationFrame(go); });
+  }
   /** Filter & sort galeri / video */
   const _mediaFilter = {
     gallery: { q: '', sort: 'newest' },
@@ -774,6 +798,7 @@
           ev.preventDefault();
           _ggOpen[gKey] = false;
           paint();
+          focusGroupCard(box, 'data-gg-key', gKey);
         }
       }, ['▴ Lipat grup']));
       groupEl.appendChild(titleRow);
@@ -809,6 +834,7 @@
             ev.preventDefault();
             _ggOpen[gKey] = false;
             paint();
+            focusGroupCard(box, 'data-gg-key', gKey);
           }
         }, ['▴ Lipat grup · ' + (gg.name || '')])
       ]));
@@ -1075,6 +1101,7 @@
           ev.preventDefault();
           _vgOpen[gKey] = false;
           paint();
+          focusGroupCard(box, 'data-vg-key', gKey);
         }
       }, ['▴ Lipat grup']));
       groupEl.appendChild(titleRow);
@@ -1110,6 +1137,7 @@
             ev.preventDefault();
             _vgOpen[gKey] = false;
             paint();
+            focusGroupCard(box, 'data-vg-key', gKey);
           }
         }, ['▴ Lipat grup · ' + (gg.name || '')])
       ]));
