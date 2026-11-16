@@ -1696,14 +1696,22 @@ body.admin-edit-armed [data-admin-edit]:hover {
 .gg-mixed-grid .vg-group .gg-summary-thumb {
   width: 100%;
   height: auto;
-  aspect-ratio: 4 / 3;
+  aspect-ratio: 16 / 9; /* sama seperti .video-thumb card video */
   border-radius: 0;
   flex-shrink: 0;
 }
 .grid-2.gg-mixed-grid .vg-group .gg-summary-meta,
 .gg-mixed-grid .vg-group .gg-summary-meta {
-  padding: .65rem .8rem .85rem;
+  padding: .75rem 1rem 1rem; /* selaras padding h3 .video-card */
   flex: 1;
+}
+.grid-2.gg-mixed-grid .vg-group .gg-summary-name {
+  font-size: 1rem;
+  line-height: 1.3;
+}
+.grid-2.gg-mixed-grid .vg-group .gg-summary-count,
+.grid-2.gg-mixed-grid .vg-group .gg-summary-hint {
+  font-size: .82rem;
 }
 .grid-2.gg-mixed-grid .vg-group .gg-summary-chevron,
 .gg-mixed-grid .vg-group .gg-summary-chevron {
