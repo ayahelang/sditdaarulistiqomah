@@ -1571,8 +1571,22 @@ body.admin-edit-armed [data-admin-edit]:hover {
   position: relative;
 }
 @media (max-width: 900px) {
-  .media-toolbar { flex-direction: column; align-items: stretch; }
-  .media-toolbar-sort { align-self: flex-start; }
+  .media-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: .5rem;
+    margin-bottom: .85rem;
+  }
+  /* flex:1 di search membuat ruang kosong vertikal besar saat column */
+  .media-toolbar-search {
+    flex: 0 0 auto !important;
+    width: 100%;
+    min-width: 0;
+  }
+  .media-toolbar-sort {
+    align-self: flex-start;
+    flex: 0 0 auto;
+  }
 }
 
 /* Campuran card + grup tertutup: satu grid 3 kolom */
@@ -1719,4 +1733,60 @@ body.admin-edit-armed [data-admin-edit]:hover {
   right: .65rem;
   bottom: .55rem;
   opacity: .65;
+}
+
+
+.gallery-group-head .gg-head-left {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .45rem .6rem;
+  flex: 1;
+  min-width: 0;
+}
+.gallery-group-head .gg-head-left .gallery-group-title {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+/* Header grup terbuka: mobile judul+count kiri bertumpuk, lipat kanan */
+@media (max-width: 640px) {
+  .gallery-group-head {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: .5rem;
+  }
+  .gallery-group-head .gg-head-left {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: .15rem;
+  }
+  .gallery-group-head .gallery-group-title {
+    margin: 0;
+    padding: 0;
+    border: none;
+    min-width: 0;
+    max-width: 100%;
+    width: 100%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 1.05rem;
+    line-height: 1.25;
+  }
+  .gallery-group-head .gg-count {
+    display: inline-block;
+    white-space: nowrap;
+    flex-shrink: 0;
+    margin: 0;
+  }
+  .gallery-group-head .gg-fold-btn {
+    flex-shrink: 0;
+    align-self: center;
+  }
 }
