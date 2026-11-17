@@ -376,25 +376,31 @@
       if (!AC) return;
       if (!__twAudioCtx) __twAudioCtx = new AC();
       const ctx = __twAudioCtx;
-      if (ctx.state === 'suspended') ctx.resume().catch(() => {});
-      const t0 = ctx.currentTime;
-      // bunyi ketukan mesin ketik singkat
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      const filter = ctx.createBiquadFilter();
-      osc.type = 'square';
-      osc.frequency.value = 780 + Math.random() * 220;
-      filter.type = 'bandpass';
-      filter.frequency.value = 1800;
-      filter.Q.value = 4;
-      gain.gain.setValueAtTime(0.0001, t0);
-      gain.gain.exponentialRampToValueAtTime(0.045, t0 + 0.004);
-      gain.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.045);
-      osc.connect(filter);
-      filter.connect(gain);
-      gain.connect(ctx.destination);
-      osc.start(t0);
-      osc.stop(t0 + 0.05);
+      const play = function () {
+        const t0 = ctx.currentTime;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        const filter = ctx.createBiquadFilter();
+        osc.type = 'square';
+        osc.frequency.value = 780 + Math.random() * 220;
+        filter.type = 'bandpass';
+        filter.frequency.value = 1800;
+        filter.Q.value = 4;
+        // volume sedikit lebih jelas (masih lembut)
+        gain.gain.setValueAtTime(0.0001, t0);
+        gain.gain.exponentialRampToValueAtTime(0.08, t0 + 0.004);
+        gain.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.05);
+        osc.connect(filter);
+        filter.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(t0);
+        osc.stop(t0 + 0.055);
+      };
+      if (ctx.state === 'suspended') {
+        ctx.resume().then(play).catch(function () { try { play(); } catch (_) {} });
+      } else {
+        play();
+      }
     } catch (_) {}
   }
 
@@ -770,8 +776,9 @@
       // Urutan dalam grup foto = nama file natural (1,2,10…), bukan judul alfabet terbalik
       const gSort = (_mediaFilter.gallery && _mediaFilter.gallery.sort) || 'newest';
       const reverseG = (gSort === 'oldest');
+      // Urutan dalam grup foto: by title natural (Video/Foto 1,2,10…), fallback nama file
       let fileOrder = sortGroupByFilename(files, function (f) {
-        return f.file || f.name || f.title || '';
+        return f.title || f.file || f.name || '';
       }, reverseG).map(function (row) {
         return { f: row.item, i: row.i };
       });
@@ -787,10 +794,10 @@
         'data-gg-key': gKey
       }, []);
       const titleRow = el('div', { class: 'gallery-group-head' }, []);
-      titleRow.appendChild(el('h3', { class: 'gallery-group-title' }, [
-        gg.name || 'Galeri',
-        el('span', { class: 'gg-count' }, [String(files.length) + ' foto'])
-      ]));
+      const headLeft = el('div', { class: 'gg-head-left' }, []);
+      headLeft.appendChild(el('h3', { class: 'gallery-group-title' }, [gg.name || 'Galeri']));
+      headLeft.appendChild(el('span', { class: 'gg-count' }, [String(files.length) + ' foto']));
+      titleRow.appendChild(headLeft);
       titleRow.appendChild(el('button', {
         type: 'button',
         class: 'btn btn-ghost gg-fold-btn',
@@ -1070,8 +1077,9 @@
       // Urutan dalam grup video = nama file (fileName), natural; fallback title
       const gSort = (_mediaFilter.videos && _mediaFilter.videos.sort) || 'newest';
       const reverseV = (gSort === 'oldest');
+      // Urutan dalam grup video: by title natural ("… Video 1/2/3"), fallback fileName
       let order = sortGroupByFilename(items, function (it) {
-        return it.fileName || it.file || it.name || it.title || it.youtubeId || '';
+        return it.title || it.fileName || it.file || it.name || it.youtubeId || '';
       }, reverseV).map(function (row) {
         return { it: row.item, i: row.i };
       });
@@ -1087,10 +1095,10 @@
         'data-admin-edit': 'videoGroups:' + gIdx
       }, []);
       const titleRow = el('div', { class: 'gallery-group-head' }, []);
-      titleRow.appendChild(el('h3', { class: 'gallery-group-title' }, [
-        gg.name || 'Playlist',
-        el('span', { class: 'gg-count' }, [String(items.length) + ' video'])
-      ]));
+      const headLeft = el('div', { class: 'gg-head-left' }, []);
+      headLeft.appendChild(el('h3', { class: 'gallery-group-title' }, [gg.name || 'Playlist']));
+      headLeft.appendChild(el('span', { class: 'gg-count' }, [String(items.length) + ' video']));
+      titleRow.appendChild(headLeft);
       titleRow.appendChild(el('button', {
         type: 'button',
         class: 'btn btn-ghost gg-fold-btn',
